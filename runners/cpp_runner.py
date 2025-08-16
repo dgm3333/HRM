@@ -320,6 +320,8 @@ def run_binary(
     env: Optional[Mapping[str, str]] = None,
     sandbox: Optional[IsolateRunner] = None,
     cwd: Optional[Path] = None,
+    stdout_limit: int = 10_000,
+    stderr_limit: int = 10_000,
 ) -> Tuple[int, str, str]:
     """Execute a compiled ``binary`` with optional limits and environment.
 
@@ -349,6 +351,9 @@ def run_binary(
         Working directory for execution. Defaults to the directory of
         ``binary`` so that coverage artifacts are written alongside the
         executable.
+    stdout_limit, stderr_limit:
+        Maximum number of characters captured from ``stdout`` and ``stderr``
+        when executing inside the sandbox.
     """
 
     if cwd is None:
@@ -356,7 +361,7 @@ def run_binary(
 
     if sandbox is not None:
         memory_kb = (memory_limit or 256 * 1024 * 1024) // 1024
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
             try:
                 proc = sandbox.run(
                     [str(binary)],
@@ -364,30 +369,15 @@ def run_binary(
                     wall_time=int(timeout),
                     memory=memory_kb,
                     stdin=input_data,
-                    workdir=str(cwd),
+                    workdir=tmpdir,
+                    readonly_dirs=[str(cwd)],
                     env=env,
+                    stdout_limit=stdout_limit,
+                    stderr_limit=stderr_limit,
                 )
-            except TypeError:
-                try:
-                    proc = sandbox.run(
-                        [str(binary)],
-                        time_limit=int(timeout),
-                        wall_time=int(timeout),
-                        memory=memory_kb,
-                        stdin=input_data,
-                        env=env,
-                    )
-                except TypeError:
-                    proc = sandbox.run(
-                        [str(binary)],
-                        time_limit=int(timeout),
-                        wall_time=int(timeout),
-                        memory=memory_kb,
-                        stdin=input_data,
-                    )
-        except SandboxError as exc:
-            return -1, "", str(exc)
-        return proc.returncode, proc.stdout, proc.stderr
+            except SandboxError as exc:
+                return -1, "", str(exc)
+            return proc.returncode, proc.stdout, proc.stderr
 
     def preexec() -> None:
         _set_limits(memory_limit)

@@ -229,6 +229,7 @@ int main(){std::cout<<times_two(7);}
                 text=True,
                 check=False,
                 env=self.env,
+                cwd=kwargs.get("workdir"),
             )
 
     runner = EnvRunner()
@@ -245,15 +246,18 @@ int main(){std::cout<<times_two(7);}
 class SpyRunner:
     def __init__(self) -> None:
         self.calls = 0
+        self.kwargs = None
 
     def run(self, cmd, **kwargs):
         self.calls += 1
+        self.kwargs = kwargs
         return subprocess.run(
             cmd,
             input=kwargs.get("stdin"),
             capture_output=True,
             text=True,
             check=False,
+            cwd=kwargs.get("workdir"),
         )
 
 
