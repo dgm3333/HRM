@@ -73,12 +73,12 @@ Save new code files in: C:\repos\hrm-coder
     [ ] Create 5-task smoke run pipeline for CI runtime budgets
 
 ** [ ] Phase 7: Evaluation Harness and Reporting
-    [ ] Implement pass\@k computation with fixed seeds and sampling policies
-    [ ] Implement determinism checker to re-run top-k with shuffled ordering
-    [ ] Implement flaky-test detector and flagging in results
-    [ ] Build HTML and Markdown report generator with tables and plots
+    [~] Implement pass\@k computation with fixed seeds and sampling policies
+    [~] Implement determinism checker to re-run top-k with shuffled ordering
+    [~] Implement flaky-test detector and flagging in results
+    [~] Build HTML and Markdown report generator with tables and plots
     [ ] Implement baseline comparator against recorded C++ code-LM prompts
-    [ ] Implement artifact bundler and uploader for reports and raw JSON
+    [~] Implement artifact bundler and uploader for reports and raw JSON
 
 ** [ ] Phase 8: CI/CD and Automation
     [ ] Create GitHub Actions workflow for C++ lint (clang-tidy/clang-format) and unit tests on PRs
