@@ -23,10 +23,25 @@ class DatasetConfig:
 
 
 @dataclass
+class RunnerConfig:
+    """Configuration for the sandbox runner.
+
+    These defaults are intentionally lightweight but provide a
+    foundation for Phase 1 deterministic execution. They will be
+    expanded in later phases to cover additional runner options.
+    """
+
+    compiler: str = "g++"
+    sandbox: str = "nsjail"
+    timeout: int = 5
+
+
+@dataclass
 class AppConfig:
     """Top-level application configuration."""
     model: ModelConfig = field(default_factory=ModelConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
+    runner: RunnerConfig = field(default_factory=RunnerConfig)
 
 
 def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
@@ -47,7 +62,14 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
     return AppConfig(
         model=ModelConfig(**cfg_dict["model"]),
         dataset=DatasetConfig(**cfg_dict["dataset"]),
+        runner=RunnerConfig(**cfg_dict["runner"]),
     )
 
 
-__all__ = ["AppConfig", "DatasetConfig", "ModelConfig", "load_config"]
+__all__ = [
+    "AppConfig",
+    "DatasetConfig",
+    "ModelConfig",
+    "RunnerConfig",
+    "load_config",
+]
