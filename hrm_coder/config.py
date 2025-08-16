@@ -8,6 +8,8 @@ from typing import Sequence
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from runners import sandbox_detector
+
 
 @dataclass
 class ModelConfig:
@@ -38,10 +40,15 @@ class RunnerConfig:
     These defaults are intentionally lightweight but provide a
     foundation for Phase 1 deterministic execution. They will be
     expanded in later phases to cover additional runner options.
+
+    ``sandbox`` supports the special value ``"auto"`` which selects the
+    first available backend from :mod:`runners.sandbox_detector` in the
+    order ``isolate`` → ``nsjail`` → ``runsc``. When no sandbox is
+    detected the value ``"none"`` is used.
     """
 
     compiler: str = "g++"
-    sandbox: str = "nsjail"
+    sandbox: str = "auto"
     timeout: int = 5
     memory_limit: int = 256  # in megabytes
     cpus: int = 1
@@ -96,10 +103,16 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
             overrides=list(overrides) if overrides else [],
         )
     cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+
+    runner_cfg = RunnerConfig(**cfg_dict["runner"])
+    if runner_cfg.sandbox == "auto":
+        selected, _ = sandbox_detector.select_sandbox()
+        runner_cfg.sandbox = selected or "none"
+
     return AppConfig(
         model=ModelConfig(**cfg_dict["model"]),
         dataset=DatasetConfig(**cfg_dict["dataset"]),
-        runner=RunnerConfig(**cfg_dict["runner"]),
+        runner=runner_cfg,
         acceptance=AcceptanceConfig(**cfg_dict["acceptance"]),
         training=TrainingConfig(**cfg_dict["training"]),
         environment=EnvironmentConfig(**cfg_dict["environment"]),
