@@ -20,8 +20,10 @@ class RewardAggregator:
         ``compile``, ``tests``, ``coverage``, ``coverage_delta``,
         ``lint``, ``static`` and ``sanitizer``.
     max_edit_penalty: maximum penalty applied for edit cost.
-    max_time_penalty: maximum penalty applied when runtime exceeds the limit.
-    max_memory_penalty: maximum penalty applied when memory use exceeds the limit.
+    max_time_penalty: maximum penalty applied when runtime exceeds the
+        limit.
+    max_memory_penalty: maximum penalty applied when memory use exceeds
+        the limit.
     all_green_bonus: additional reward added when all tests pass.
     """
 
@@ -61,7 +63,8 @@ class RewardAggregator:
         time_used: wall-clock seconds consumed.
         memory_used: peak memory usage in megabytes.
         lint_score: normalized score from clang-tidy/clang diagnostics.
-        static_score: normalized score from static analysis tools (e.g. cppcheck).
+        static_score: normalized score from static analysis tools
+            (e.g. cppcheck).
         sanitizer_clean: whether Address/UndefinedBehavior sanitizers reported
             no issues. ``None`` skips this signal.
         prev_coverage: previous coverage value used to compute coverage delta.
@@ -94,8 +97,12 @@ class RewardAggregator:
         reward += self.weights.get("tests", 0.0) * test_score
         reward += self.weights.get("coverage", 0.0) * coverage_score
         reward += self.weights.get("coverage_delta", 0.0) * cov_delta
-        reward += self.weights.get("lint", 0.0) * max(0.0, min(lint_score, 1.0))
-        reward += self.weights.get("static", 0.0) * max(0.0, min(static_score, 1.0))
+        reward += self.weights.get("lint", 0.0) * max(
+            0.0, min(lint_score, 1.0)
+        )
+        reward += self.weights.get("static", 0.0) * max(
+            0.0, min(static_score, 1.0)
+        )
         if sanitizer_clean is not None:
             san_score = 1.0 if sanitizer_clean else -1.0
             reward += self.weights.get("sanitizer", 0.0) * san_score
@@ -112,7 +119,10 @@ class RewardAggregator:
 
         if memory_limit and memory_used > memory_limit:
             over = (memory_used - memory_limit) / memory_limit
-            reward -= min(over * self.max_memory_penalty, self.max_memory_penalty)
+            reward -= min(
+                over * self.max_memory_penalty,
+                self.max_memory_penalty,
+            )
 
         # Record history for histogram logging
         self.history.append(reward)
@@ -203,3 +213,53 @@ class RewardAggregator:
         if any(r < -1.0 or r > 1.0 for r in self.history):
             logger.warning("reward out of expected [-1,1] range")
         logger.debug("reward histogram: %s", hist)
+
+    def check_drift(
+        self,
+        expected_range: tuple[float, float],
+        window: int = 50,
+        logger: logging.Logger | None = None,
+    ) -> bool:
+        """Return ``True`` if the mean reward drifts outside
+        ``expected_range``.
+
+        Parameters
+        ----------
+        expected_range:
+            Tuple specifying inclusive lower and upper bounds for the
+            expected mean reward.
+        window:
+            Number of most recent rewards to consider.  Defaults to 50,
+            or the available history if shorter.
+        logger:
+            Optional :class:`logging.Logger` used for warnings.
+            When ``None`` a module-level logger is used.
+
+        Returns
+        -------
+        bool
+            ``True`` when drift is detected, otherwise ``False``.
+        """
+
+        if not self.history:
+            return False
+
+        logger = logger or logging.getLogger(__name__)
+        lo, hi = expected_range
+        sample = self.history[-window:]
+        mean = sum(sample) / len(sample)
+        if mean < lo or mean > hi:
+            logger.warning(
+                "mean reward %.3f outside expected range [%s, %s]",
+                mean,
+                lo,
+                hi,
+            )
+            return True
+        logger.debug(
+            "mean reward %.3f within expected range [%s, %s]",
+            mean,
+            lo,
+            hi,
+        )
+        return False
