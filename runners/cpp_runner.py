@@ -16,6 +16,8 @@ import tempfile
 from pathlib import Path
 from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
+from .error_taxonomy import classify_compile, classify_runtime
+
 
 DEFAULT_FLAGS: List[str] = ["-std=c++17", "-O2", "-pipe"]
 SANITIZER_FLAGS: List[str] = [
@@ -242,8 +244,8 @@ def run_codeforces_tests(
     """Compile ``sources`` and run them against all tests in ``tests_dir``.
 
     The directory is expected to contain pairs of ``*.in`` and ``*.out`` files.
-    Results are returned as a mapping with compile diagnostics and a list of
-    per-test outcomes.
+    Results include compilation diagnostics and a list of per-test outcomes
+    with error classifications.
     """
 
     success, out, err, binary = compile_cpp_sources(
@@ -257,11 +259,13 @@ def run_codeforces_tests(
         rpath=rpath,
         use_ccache=use_ccache,
     )
+    compile_status = classify_compile(success, err)
     results = []
     if not success or binary is None:
         return {
             "compile_stdout": out,
             "compile_stderr": err,
+            "compile_status": compile_status,
             "results": results,
         }
 
@@ -278,8 +282,11 @@ def run_codeforces_tests(
                 memory_limit=memory_limit,
                 env=env,
             )
+            timed_out = False
         except subprocess.TimeoutExpired:
             code, stdout, stderr = -1, "", "TIMEOUT"
+            timed_out = True
+        error_type = classify_runtime(code, stderr, timed_out=timed_out)
         passed = stdout.strip() == expected.strip() and code == 0
         results.append(
             {
@@ -287,7 +294,13 @@ def run_codeforces_tests(
                 "passed": passed,
                 "stdout": stdout,
                 "stderr": stderr,
+                "error_type": error_type,
             }
         )
 
-    return {"compile_stdout": out, "compile_stderr": err, "results": results}
+    return {
+        "compile_stdout": out,
+        "compile_stderr": err,
+        "compile_status": compile_status,
+        "results": results,
+    }
