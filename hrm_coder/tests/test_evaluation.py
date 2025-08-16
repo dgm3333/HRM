@@ -97,6 +97,9 @@ def test_generate_reports(tmp_path):
     baseline_file = tmp_path / "baseline.json"
     baseline_file.write_text(json.dumps({"pass@1": 0.0, "pass@2": 0.0}))
 
+    bundle_path = tmp_path / "bundle.tar.gz"
+    upload_dir = tmp_path / "uploaded"
+
     metrics = generate_reports(
         results_path=str(results_file),
         output_dir=str(tmp_path),
@@ -104,6 +107,8 @@ def test_generate_reports(tmp_path):
         run_paths=[str(run1_file), str(run2_file)],
         baseline_path=str(baseline_file),
         incident_paths=[str(incident1_file), str(incident2_file)],
+        bundle_path=str(bundle_path),
+        upload_dir=str(upload_dir),
     )
 
     assert metrics[1] == pytest.approx(0.25)
@@ -113,3 +118,12 @@ def test_generate_reports(tmp_path):
     assert (tmp_path / "report.html").exists()
     assert (tmp_path / "baseline.md").exists()
     assert (tmp_path / "baseline.html").exists()
+    assert bundle_path.exists()
+    assert (upload_dir / "bundle.tar.gz").exists()
+
+    import tarfile
+
+    with tarfile.open(bundle_path, "r:gz") as tar:
+        names = tar.getnames()
+        assert "report.md" in names
+        assert "results.json" in names
