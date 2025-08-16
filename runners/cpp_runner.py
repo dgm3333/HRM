@@ -321,6 +321,8 @@ def run_binary(
     env: Optional[Mapping[str, str]] = None,
     sandbox: Optional[IsolateRunner] = None,
     cwd: Optional[Path] = None,
+    stdout_limit: Optional[int] = None,
+    stderr_limit: Optional[int] = None,
 ) -> Tuple[int, str, str]:
     """Execute a compiled ``binary`` with optional limits and environment.
 
@@ -350,6 +352,10 @@ def run_binary(
         Working directory for execution. Defaults to the directory of
         ``binary`` so that coverage artifacts are written alongside the
         executable.
+    stdout_limit, stderr_limit:
+        Optional maximum sizes for captured stdout and stderr.  When a
+        sandbox runner is used the limits are forwarded to it.  Otherwise the
+        captured output is truncated locally.
     """
 
     if cwd is None:
@@ -367,6 +373,8 @@ def run_binary(
                     stdin=input_data,
                     workdir=str(cwd),
                     env=env,
+                    stdout_limit=stdout_limit,
+                    stderr_limit=stderr_limit,
                 )
             except TypeError:
                 try:
@@ -377,6 +385,8 @@ def run_binary(
                         memory=memory_kb,
                         stdin=input_data,
                         env=env,
+                        stdout_limit=stdout_limit,
+                        stderr_limit=stderr_limit,
                     )
                 except TypeError:
                     proc = sandbox.run(
@@ -385,6 +395,8 @@ def run_binary(
                         wall_time=int(timeout),
                         memory=memory_kb,
                         stdin=input_data,
+                        stdout_limit=stdout_limit,
+                        stderr_limit=stderr_limit,
                     )
         except SandboxError as exc:
             return -1, "", str(exc)
@@ -405,7 +417,13 @@ def run_binary(
         env={**os.environ, **env} if env is not None else None,
         cwd=str(cwd),
     )
-    return proc.returncode, proc.stdout, proc.stderr
+    stdout = proc.stdout
+    stderr = proc.stderr
+    if stdout_limit is not None:
+        stdout = stdout[:stdout_limit]
+    if stderr_limit is not None:
+        stderr = stderr[:stderr_limit]
+    return proc.returncode, stdout, stderr
 
 
 def _parse_gcov_file(path: Path) -> float:
@@ -470,6 +488,8 @@ def run_codeforces_tests(
     env: Optional[Mapping[str, str]] = None,
     sandbox: Optional[IsolateRunner] = None,
     cache: Optional[SandboxCache] = None,
+    stdout_limit: Optional[int] = None,
+    stderr_limit: Optional[int] = None,
     collect_coverage: bool = False,
     shared_libs: Optional[Mapping[str, Sequence[Path]]] = None,
     static_libs: Optional[Mapping[str, Sequence[Path]]] = None,
@@ -483,6 +503,13 @@ def run_codeforces_tests(
     with error classifications. When ``collect_coverage`` is ``True`` the
     program is instrumented with ``--coverage`` and ``gcov`` is used to compute
     a line coverage ratio.
+
+    Parameters
+    ----------
+    stdout_limit, stderr_limit:
+        Optional maximum sizes for captured stdout and stderr from each test
+        case. Limits are forwarded to the sandbox runner or applied locally
+        when no sandbox is used.
     """
 
     key: Optional[str] = None
@@ -502,6 +529,10 @@ def run_codeforces_tests(
         parts.append(str(timeout).encode())
         if memory_limit is not None:
             parts.append(str(memory_limit).encode())
+        if stdout_limit is not None:
+            parts.append(f"out{stdout_limit}".encode())
+        if stderr_limit is not None:
+            parts.append(f"err{stderr_limit}".encode())
         if collect_coverage:
             parts.append(b"coverage")
         key = cache.hash_parts(parts)
@@ -637,6 +668,8 @@ def run_codeforces_tests(
             memory_limit=memory_limit,
             env=env,
             sandbox=sandbox,
+            stdout_limit=stdout_limit,
+            stderr_limit=stderr_limit,
         )
         coverage_ratio = 0.0
         if collect_coverage:
