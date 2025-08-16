@@ -3,4 +3,5 @@ defaults:
   - model: small
   - runner: default
   - acceptance: default
+  - environment: default
   - _self_
