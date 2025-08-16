@@ -28,6 +28,7 @@ import json
 from pathlib import Path
 from typing import List
 
+from .schemas import AtCoderRecord
 from .split_manager import split_list
 
 
@@ -52,15 +53,18 @@ def load_tasks(path: Path) -> List[AtCoderTask]:
     tasks: List[AtCoderTask] = []
     with path.open() as fh:
         for line in fh:
-            raw = json.loads(line)
-            tests = [IOPair(**t) for t in raw["tests"]]
+            record = AtCoderRecord.model_validate_json(line)
+            tests = [
+                IOPair(input=io.input, output=io.output)
+                for io in record.tests
+            ]
             tasks.append(
                 AtCoderTask(
-                    task_id=raw["task_id"],
-                    prompt=raw["prompt"],
+                    task_id=record.task_id,
+                    prompt=record.prompt,
                     tests=tests,
-                    time_limit_ms=raw.get("time_limit_ms", 2000),
-                    memory_limit_kb=raw.get("memory_limit_kb", 102400),
+                    time_limit_ms=record.time_limit_ms,
+                    memory_limit_kb=record.memory_limit_kb,
                 )
             )
     return tasks
