@@ -1,0 +1,3 @@
+current_metrics: current.json
+baseline_metrics: baseline.json
+output_report: report.json
