@@ -42,7 +42,7 @@ jobs:
         run: |
           if [ -d build ]; then
             lcov --capture --directory build --output-file coverage.info
-            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info --ignore-errors unused
             genhtml coverage.info --output-directory coverage_html
           else
             echo "No coverage generated."
