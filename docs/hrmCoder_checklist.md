@@ -57,12 +57,12 @@ Save new code files in: C:\repos\hrm-coder
     [ ] Create malicious sample integration tests (file read, fork bomb, excessive forks, socket open)
 
 ** [ ] Phase 5: Reward Shaping and Safety Gates
-    [ ] Implement reward aggregator with weighted compile/link status, tests, and coverage signals
+    [X] Implement reward aggregator with weighted compile/link status, tests, and coverage signals
     [ ] Integrate clang-tidy/clang++ -Wall -Wextra -Werror diagnostics into normalized lint score
     [ ] Integrate static analysis (cppcheck) scoring and normalization
     [ ] Implement coverage delta computation using gcov/lcov or llvm-cov
-    [ ] Implement edit-cost, time, and memory penalty functions with clamps
-    [ ] Add reward histogram logging to tracker with sanity checks
+    [X] Implement edit-cost, time, and memory penalty functions with clamps
+    [X] Add reward histogram logging to tracker with sanity checks
 
 ** [ ] Phase 6: HRM Training Loop Integration
     [ ] Implement CodeEncoder interface and tokenizer utilities for C++ syntax

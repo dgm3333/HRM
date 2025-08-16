@@ -1,0 +1,100 @@
+from dataclasses import dataclass, field
+from typing import Dict, List
+import logging
+
+
+@dataclass
+class RewardAggregator:
+    """Aggregates multiple reward signals into a single scalar.
+
+    Parameters
+    ----------
+    weights: mapping of signal name to weight. Supported keys are
+        ``compile``, ``tests`` and ``coverage``.
+    max_edit_penalty: maximum penalty applied for edit cost.
+    max_time_penalty: maximum penalty applied when runtime exceeds the limit.
+    max_memory_penalty: maximum penalty applied when memory use exceeds the limit.
+    """
+
+    weights: Dict[str, float]
+    max_edit_penalty: float = 0.1
+    max_time_penalty: float = 0.1
+    max_memory_penalty: float = 0.1
+    history: List[float] = field(default_factory=list)
+
+    def compute(
+        self,
+        compile_success: bool,
+        tests_passed: int,
+        tests_total: int,
+        coverage: float,
+        edit_cost: float,
+        time_used: float,
+        memory_used: float,
+        time_limit: float | None = None,
+        memory_limit: float | None = None,
+    ) -> float:
+        """Compute aggregate reward with penalties.
+
+        Parameters
+        ----------
+        compile_success: whether compilation (and link) succeeded.
+        tests_passed: number of unit tests passed.
+        tests_total: total number of unit tests executed.
+        coverage: code coverage ratio in [0, 1].
+        edit_cost: number of edit operations performed.
+        time_used: wall-clock seconds consumed.
+        memory_used: peak memory usage in megabytes.
+        time_limit: optional runtime limit.
+        memory_limit: optional memory limit.
+        """
+
+        reward = 0.0
+
+        compile_score = 1.0 if compile_success else 0.0
+        test_score = tests_passed / tests_total if tests_total else 0.0
+        coverage_score = max(0.0, min(coverage, 1.0))
+
+        reward += self.weights.get("compile", 0.0) * compile_score
+        reward += self.weights.get("tests", 0.0) * test_score
+        reward += self.weights.get("coverage", 0.0) * coverage_score
+
+        # Penalties
+        reward -= min(edit_cost * self.max_edit_penalty, self.max_edit_penalty)
+
+        if time_limit and time_used > time_limit:
+            over = (time_used - time_limit) / time_limit
+            reward -= min(over * self.max_time_penalty, self.max_time_penalty)
+
+        if memory_limit and memory_used > memory_limit:
+            over = (memory_used - memory_limit) / memory_limit
+            reward -= min(over * self.max_memory_penalty, self.max_memory_penalty)
+
+        # Record history for histogram logging
+        self.history.append(reward)
+        return reward
+
+    def histogram(self, bins: int = 10) -> List[int]:
+        """Return a simple histogram of historical rewards."""
+
+        if not self.history:
+            return [0] * bins
+
+        mn, mx = min(self.history), max(self.history)
+        step = (mx - mn) / bins if mx > mn else 1.0
+        hist = [0] * bins
+        for value in self.history:
+            idx = int((value - mn) / step) if step else 0
+            idx = min(idx, bins - 1)
+            hist[idx] += 1
+        return hist
+
+    def log_histogram(self, logger: logging.Logger | None = None) -> None:
+        """Log histogram of rewards with a sanity range check."""
+
+        logger = logger or logging.getLogger(__name__)
+        hist = self.histogram()
+        if any(r < -1.0 or r > 1.0 for r in self.history):
+            logger.warning("reward out of expected [-1,1] range")
+        logger.debug("reward histogram: %s", hist)
+        
