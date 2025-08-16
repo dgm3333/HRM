@@ -9,7 +9,7 @@ complete but to provide a concrete starting point that unblocks Phase 6
 development.
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import torch
@@ -47,6 +47,35 @@ class HRMTrainer:
         self.model = model
         self.optimizer = optimizer
         self.config = config or HRMTrainingConfig()
+
+    # ------------------------------------------------------------------
+    # Checkpointing
+    # ------------------------------------------------------------------
+    def save_checkpoint(self, path: str) -> None:
+        """Serialise ``model`` and ``optimizer`` state to ``path``.
+
+        The configuration is stored alongside the state dictionaries so a
+        resumed run can continue with identical hyper‑parameters.
+        """
+
+        state = {
+            "model": self.model.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "config": asdict(self.config),
+        }
+        torch.save(state, path)
+
+    def load_checkpoint(
+        self, path: str, map_location: Optional[str] = None
+    ) -> None:
+        """Restore ``model`` and ``optimizer`` state from ``path``."""
+
+        checkpoint = torch.load(path, map_location=map_location)
+        self.model.load_state_dict(checkpoint["model"])
+        self.optimizer.load_state_dict(checkpoint["optimizer"])
+        cfg_dict = checkpoint.get("config")
+        if cfg_dict is not None:
+            self.config = HRMTrainingConfig(**cfg_dict)
 
     # ------------------------------------------------------------------
     # Curriculum handling
