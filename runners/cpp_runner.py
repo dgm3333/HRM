@@ -399,9 +399,9 @@ def run_binary(
                         stdout_limit=stdout_limit,
                         stderr_limit=stderr_limit,
                     )
-        except SandboxError as exc:
-            return -1, "", str(exc)
-        return proc.returncode, proc.stdout, proc.stderr
+            except SandboxError as exc:
+                return -1, "", str(exc)
+            return proc.returncode, proc.stdout, proc.stderr
 
     def preexec() -> None:
         _set_limits(memory_limit)
@@ -527,6 +527,21 @@ def run_codeforces_tests(
         for f in sorted(Path(tests_dir).glob("*")):
             if f.is_file():
                 parts.append(f.read_bytes())
+        parts.append(compiler.encode())
+        for f in sorted(flags or []):
+            parts.append(f.encode())
+        parts.append(b"sanitize" if sanitize else b"no_sanitize")
+        parts.append(b"static" if static else b"dynamic")
+        for d in sorted(str(p) for p in library_dirs or []):
+            parts.append(d.encode())
+        for lib in sorted(libraries or []):
+            parts.append(lib.encode())
+        for rp in sorted(str(p) for p in rpath or []):
+            parts.append(rp.encode())
+        parts.append(b"ccache" if use_ccache else b"no_ccache")
+        if env:
+            for k, v in sorted(env.items()):
+                parts.append(f"{k}={v}".encode())
         parts.append(str(timeout).encode())
         if memory_limit is not None:
             parts.append(str(memory_limit).encode())
@@ -669,6 +684,7 @@ def run_codeforces_tests(
             memory_limit=memory_limit,
             env=env,
             sandbox=sandbox,
+            cache=cache,
             stdout_limit=stdout_limit,
             stderr_limit=stderr_limit,
         )
