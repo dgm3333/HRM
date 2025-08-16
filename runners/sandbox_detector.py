@@ -28,9 +28,11 @@ class SandboxInfo(Dict[str, Optional[str]]):
 
 
 def _probe_version(cmd: str) -> Optional[str]:
-    """Return the first line of ``cmd --version`` if it executes successfully."""
+    """Return first line of ``cmd --version`` if it executes successfully."""
     try:
-        proc = subprocess.run([cmd, "--version"], capture_output=True, text=True)
+        proc = subprocess.run(
+            [cmd, "--version"], capture_output=True, text=True
+        )
     except FileNotFoundError:
         return None
     if proc.returncode != 0:
@@ -54,10 +56,48 @@ def detect_sandboxes() -> Dict[str, SandboxInfo]:
     results: Dict[str, SandboxInfo] = {}
     for name, binary in tools.items():
         path = shutil.which(binary)
-        info: SandboxInfo = SandboxInfo(available=False, version=None, path=None)
+        info: SandboxInfo = SandboxInfo(
+            available=False, version=None, path=None
+        )
         if path:
             info["available"] = True
             info["path"] = path
             info["version"] = _probe_version(binary)
         results[name] = info
     return results
+
+
+def select_sandbox(
+    preference: tuple[str, ...] = ("isolate", "nsjail", "runsc"),
+    info: Optional[Dict[str, SandboxInfo]] = None,
+) -> tuple[Optional[str], Optional[SandboxInfo]]:
+    """Choose the first available sandbox from ``preference``.
+
+    Phase 0 compares multiple sandbox backends to decide on a default
+    runner.  This helper inspects the detection results and returns the
+    first backend that is marked as available.  If none of the preferred
+    sandboxes are present, ``(None, None)`` is returned.
+
+    Parameters
+    ----------
+    preference:
+        Tuple of sandbox names in descending priority order.
+    info:
+        Optional precomputed result from :func:`detect_sandboxes` to
+        avoid duplicate probes.
+
+    Returns
+    -------
+    (name, info):
+        ``name`` is the selected sandbox identifier or ``None`` if none
+        are available.  ``info`` is the corresponding
+        :class:`SandboxInfo` entry from ``info``.
+    """
+
+    if info is None:
+        info = detect_sandboxes()
+    for name in preference:
+        details = info.get(name)
+        if details and details.get("available"):
+            return name, details
+    return None, None

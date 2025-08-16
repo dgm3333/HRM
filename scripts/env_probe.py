@@ -26,9 +26,12 @@ from runners import sandbox_detector, toolchain_detector  # noqa: E402
 
 def build_report() -> Dict[str, Any]:
     """Collect sandbox and toolchain availability information."""
+    sandboxes = sandbox_detector.detect_sandboxes()
+    selected, _ = sandbox_detector.select_sandbox(info=sandboxes)
     return {
         "python": platform.python_version(),
-        "sandboxes": sandbox_detector.detect_sandboxes(),
+        "sandboxes": sandboxes,
+        "default_sandbox": selected,
         "toolchains": toolchain_detector.detect_toolchains(),
     }
 
