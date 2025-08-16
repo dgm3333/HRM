@@ -101,11 +101,11 @@ Save new code files in: C:\repos\hrm-coder
     [X] Configure GitHub Pages publish for latest report artifacts
     [?] Bootstrap MLflow or W\&B project with tags and run summaries
 
-** [ ] Phase 9: AST-Edit Action Space (v2)
+** [~] Phase 9: AST-Edit Action Space (v2)
     [X] Integrate Tree-sitter C++ grammar and bindings
     [X] Implement node type schema and AST embedding encoder for C++
     [X] Define edit action space for insert, replace, and delete operations
-    [?] Implement cursor policy module for region selection by HRM high-level
+    [X] Implement cursor policy module for region selection by HRM high-level
     [X] Implement decoder constraint checker to avoid invalid AST states
     [X] Add ablation job configs and comparison report against token baseline
 

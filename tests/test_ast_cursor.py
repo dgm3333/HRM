@@ -8,6 +8,7 @@ from utils.ast_edit import CppAst  # noqa: E402
 from utils.ast_cursor import (  # noqa: E402
     CursorPolicy,
     ScoredCursorPolicy,
+    CompositeCursorPolicy,
     find_node_by_type,
 )
 
@@ -53,6 +54,19 @@ def test_scored_cursor_policy_prefers_high_score():
         return 1.0 if node.type == "return_statement" else 0.0
 
     policy = ScoredCursorPolicy(scorer)
+    node = policy.select(tree)
+    assert node is not None
+    assert node.type == "return_statement"
+
+
+@pytest.mark.skipif(not _parser_available(), reason=REASON)
+def test_composite_cursor_policy_falls_back():
+    ast = CppAst()
+    tree = ast.parse(CPP_SNIPPET)
+
+    missing = CursorPolicy(lambda n: n.type == "for_statement")
+    fallback = CursorPolicy(lambda n: n.type == "return_statement")
+    policy = CompositeCursorPolicy([missing, fallback])
     node = policy.select(tree)
     assert node is not None
     assert node.type == "return_statement"

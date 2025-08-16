@@ -16,13 +16,20 @@ future learned cursor module.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional, Protocol
 
 from tree_sitter import Node, Tree
 
 
 Predicate = Callable[[Node], bool]
 ScoreFn = Callable[[Node], float]
+
+
+class _Selectable(Protocol):
+    """Protocol for policies exposing a ``select`` method."""
+
+    def select(self, tree: Tree) -> Optional[Node]:
+        ...
 
 
 @dataclass
@@ -77,6 +84,25 @@ class ScoredCursorPolicy:
                     best_node = node
             queue.extend(node.children)
         return best_node
+
+
+@dataclass
+class CompositeCursorPolicy:
+    """Chain multiple cursor policies with fallbacks.
+
+    The policies are evaluated in order and the first non-``None`` match is
+    returned.  This allows callers to provide coarse-to-fine strategies where
+    simpler heuristics run before more expensive scoring functions.
+    """
+
+    policies: Iterable[_Selectable]
+
+    def select(self, tree: Tree) -> Optional[Node]:
+        for policy in self.policies:
+            node = policy.select(tree)
+            if node is not None:
+                return node
+        return None
 
 
 def find_node_by_type(tree: Tree, node_type: str) -> Optional[Node]:
