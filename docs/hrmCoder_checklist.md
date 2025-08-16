@@ -30,14 +30,14 @@ Save new code files in: C:\repos\hrm-coder
     [ ] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
     [X] Implement environment pinning and seed/tz/locale normalization module
 
-** [ ] Phase 2: GUI Stub and Backend Skeleton
-    [ ] Scaffold FastAPI app with /runs, /train, /eval, /logs/ws endpoints
-    [ ] Implement mock run registry with in-memory store and pagination
+** [~] Phase 2: GUI Stub and Backend Skeleton
+    [X] Scaffold FastAPI app with /runs, /train, /eval, /logs/ws endpoints
+    [X] Implement mock run registry with in-memory store and pagination
     [ ] Build Run Console page with config pickers and action buttons
     [ ] Build Jobs list page with sortable metrics and artifact links
     [ ] Implement artifact static server for JUnit XML and lcov/llvm-cov HTML
     [ ] Add WebSocket log streamer with tail-follow behavior
-    [ ] Provide GUI quickstart docs and sample configs
+    [X] Provide GUI quickstart docs and sample configs
 
 ** [ ] Phase 3: Deterministic Dataset Pipeline (C++)
     [ ] Implement HumanEval-CPP builder with harness generator and reference solutions
