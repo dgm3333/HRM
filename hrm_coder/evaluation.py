@@ -9,8 +9,10 @@ high-level plan laid out in the documentation.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Sequence, Iterable, List
+import json
 import math
+from pathlib import Path
+from typing import Dict, Sequence, Iterable, List, Optional
 
 
 @dataclass
@@ -116,5 +118,80 @@ def html_report(metrics: Dict[int, float], flaky: Sequence[str]) -> str:
         "<table><tr><th>k</th><th>pass@k</th></tr>"
         f"{rows}</table>"
         f"{flaky_html}"
+    )
+
+
+def compare_to_baseline(
+    current: Dict[str, float], baseline_path: str
+) -> Dict[str, Dict[str, Optional[float]]]:
+    """Compare ``current`` metrics to a JSON baseline.
+
+    Parameters
+    ----------
+    current:
+        Mapping of metric name to value for the current run.
+    baseline_path:
+        Path to a JSON file containing the baseline metrics with the
+        same keys as ``current``.
+
+    Returns
+    -------
+    Dict[str, Dict[str, Optional[float]]]
+        Mapping metric name → {"baseline", "current", "delta"}.
+        ``delta`` is ``None`` when the metric is missing from the baseline.
+    """
+
+    p = Path(baseline_path)
+    baseline = json.loads(p.read_text()) if p.exists() else {}
+    comparison: Dict[str, Dict[str, Optional[float]]] = {}
+    for key, cur_val in current.items():
+        base_val = baseline.get(key)
+        delta = cur_val - base_val if base_val is not None else None
+        comparison[key] = {
+            "baseline": base_val,
+            "current": cur_val,
+            "delta": delta,
+        }
+    return comparison
+
+
+def comparison_markdown_report(
+    comparison: Dict[str, Dict[str, Optional[float]]]
+) -> str:
+    """Render a baseline comparison as a Markdown table."""
+
+    lines = [
+        "# Baseline Comparison",
+        "",
+        "| metric | baseline | current | delta |",
+        "|---|---|---|---|",
+    ]
+    def fmt(val: Optional[float]) -> str:
+        return f"{val:.3f}" if isinstance(val, float) else str(val)
+
+    for metric, vals in comparison.items():
+        lines.append(
+            f"| {metric} | {fmt(vals['baseline'])} | {fmt(vals['current'])} | {fmt(vals['delta'])} |"
+        )
+    return "\n".join(lines)
+
+
+def comparison_html_report(
+    comparison: Dict[str, Dict[str, Optional[float]]]
+) -> str:
+    """Render a baseline comparison as HTML."""
+
+    def fmt(val: Optional[float]) -> str:
+        return f"{val:.3f}" if isinstance(val, float) else str(val)
+
+    rows = "".join(
+        f"<tr><td>{metric}</td><td>{fmt(vals['baseline'])}</td><td>{fmt(vals['current'])}</td>"
+        f"<td>{fmt(vals['delta'])}</td></tr>"
+        for metric, vals in comparison.items()
+    )
+    return (
+        "<h1>Baseline Comparison</h1>"
+        "<table><tr><th>metric</th><th>baseline</th><th>current</th><th>delta</th></tr>"
+        f"{rows}</table>"
     )
 
