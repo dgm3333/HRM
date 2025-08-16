@@ -97,3 +97,72 @@ def verify_version(
 
     current = compute_dataset_hash(Path(dataset_dir))
     return current == recorded
+
+
+def verify_catalog_versions(
+    catalog_path: str, datasets_root: str, versions_file: str
+) -> bool:
+    """Verify that all datasets in *catalog_path* match recorded hashes.
+
+    This helper loads a dataset catalog (same format as
+    ``docs/dataset_catalog.json``) and ensures that each listed dataset has a
+    corresponding entry in ``versions_file`` that matches the current contents
+    of ``datasets_root/<name>``. Unknown catalog entries are ignored.
+
+    Parameters
+    ----------
+    catalog_path:
+        Path to the dataset catalog JSON file.
+    datasets_root:
+        Directory containing one subdirectory per dataset as produced by
+        :mod:`dataset.build_from_catalog`.
+    versions_file:
+        Path to the versions file previously written by
+        :func:`update_version`.
+
+    Returns
+    -------
+    bool
+        ``True`` if all datasets verify successfully, ``False`` otherwise.
+    """
+
+    from .build_from_catalog import BUILDERS  # local import to avoid cycle
+
+    catalog = json.loads(Path(catalog_path).read_text() or "[]")
+    root = Path(datasets_root)
+
+    all_ok = True
+    for entry in catalog:
+        name = entry.get("name")
+        builder_entry = BUILDERS.get(name)
+        if not builder_entry:
+            continue
+
+        _, version_key = builder_entry
+        ds_dir = root / name
+        if not verify_version(version_key, str(ds_dir), versions_file):
+            all_ok = False
+
+    return all_ok
+
+
+if __name__ == "__main__":  # pragma: no cover - convenience CLI
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description="Verify dataset versions for all entries in a catalog"
+    )
+    parser.add_argument("catalog", help="Path to dataset_catalog.json")
+    parser.add_argument(
+        "datasets_root", help="Directory containing built datasets"
+    )
+    parser.add_argument(
+        "--versions", required=True, help="Path to versions.yml file"
+    )
+    args = parser.parse_args()
+
+    ok = verify_catalog_versions(
+        args.catalog, args.datasets_root, args.versions
+    )
+    sys.exit(0 if ok else 1)
