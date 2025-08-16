@@ -28,4 +28,7 @@ curl http://localhost:8000/runs/1/artifacts
 
 # Fetch an artifact file
 curl http://localhost:8000/artifacts/run_1/result.xml
+
+# Get coverage summary
+curl http://localhost:8000/runs/1/coverage
 ```
