@@ -1,17 +1,20 @@
 import pathlib
 import sys
+import logging
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
-from utils.reward import RewardAggregator
-from utils.diagnostics import clang_tidy_score, cppcheck_score
+from utils.reward import RewardAggregator  # noqa: E402
+from utils.diagnostics import clang_tidy_score, cppcheck_score  # noqa: E402
 
 
 def test_reward_aggregator_basic():
-    agg = RewardAggregator(weights={'compile': 0.1, 'tests': 0.7, 'coverage': 0.2},
-                           max_edit_penalty=0.05,
-                           max_time_penalty=0.05,
-                           max_memory_penalty=0.05)
+    agg = RewardAggregator(
+        weights={'compile': 0.1, 'tests': 0.7, 'coverage': 0.2},
+        max_edit_penalty=0.05,
+        max_time_penalty=0.05,
+        max_memory_penalty=0.05,
+    )
 
     # Perfect run within limits
     r1 = agg.compute(
@@ -226,3 +229,56 @@ def test_all_green_bonus_and_compile_gate():
         memory_used=0.0,
     )
     assert gated == 0.0
+
+
+def test_log_histogram_warns_on_out_of_range(caplog):
+    agg = RewardAggregator(weights={'compile': 1.0}, max_edit_penalty=2.0)
+    agg.compute(
+        compile_success=False,
+        tests_passed=0,
+        tests_total=0,
+        coverage=0.0,
+        edit_cost=10.0,
+        time_used=0.0,
+        memory_used=0.0,
+    )
+    with caplog.at_level(logging.WARNING):
+        agg.log_histogram()
+    assert any(
+        "reward out of expected [-1,1] range" in r.message
+        for r in caplog.records
+    )
+
+
+def test_drift_check_detects_mean_shift(caplog):
+    agg = RewardAggregator(weights={'compile': 1.0}, max_edit_penalty=2.0)
+    # Populate history with positive rewards within range
+    for _ in range(5):
+        agg.compute(
+            compile_success=True,
+            tests_passed=1,
+            tests_total=1,
+            coverage=0.0,
+            edit_cost=0.0,
+            time_used=0.0,
+            memory_used=0.0,
+        )
+    with caplog.at_level(logging.WARNING):
+        assert not agg.check_drift((0.0, 1.0))
+
+    # Add negative rewards to shift mean below range
+    for _ in range(5):
+        agg.compute(
+            compile_success=False,
+            tests_passed=0,
+            tests_total=0,
+            coverage=0.0,
+            edit_cost=10.0,
+            time_used=0.0,
+            memory_used=0.0,
+        )
+    with caplog.at_level(logging.WARNING):
+        assert agg.check_drift((0.0, 1.0))
+    assert any(
+        "outside expected range" in r.message for r in caplog.records
+    )
