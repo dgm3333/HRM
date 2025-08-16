@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from hrm_coder import app
+from .. import app
 
 
 def test_run_lifecycle():

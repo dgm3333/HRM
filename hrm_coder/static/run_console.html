@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Run Console</title>
+</head>
+<body>
+  <h1>Run Console</h1>
+  <label>Config JSON:</label>
+  <textarea id="config" rows="4" cols="40">{"foo":"bar"}</textarea><br/>
+  <button onclick="startRun('train')">Start Train</button>
+  <button onclick="startRun('eval')">Start Eval</button>
+  <pre id="result"></pre>
+  <script>
+    async function startRun(kind) {
+      let cfgText = document.getElementById('config').value;
+      let cfg;
+      try {
+        cfg = JSON.parse(cfgText);
+      } catch (e) {
+        alert('Invalid JSON');
+        return;
+      }
+      const resp = await fetch(`/${kind}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(cfg)
+      });
+      document.getElementById('result').textContent = JSON.stringify(await resp.json(), null, 2);
+    }
+  </script>
+</body>
+</html>
