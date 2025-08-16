@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 
 class ToolInfo(Dict[str, Optional[str]]):
@@ -61,4 +61,47 @@ def detect_toolchains() -> Dict[str, ToolInfo]:
     return results
 
 
-__all__ = ["detect_toolchains", "ToolInfo"]
+def _select_tool(
+    names: Tuple[str, ...], info: Optional[Dict[str, ToolInfo]] = None
+) -> Tuple[Optional[str], Optional[ToolInfo]]:
+    """Return first available tool from ``names``.
+
+    This helper mirrors the sandbox selection logic used elsewhere in
+    Phase 0.  ``names`` is a tuple of tool identifiers in priority order.
+    ``info`` allows callers to pass precomputed detection results to
+    avoid repeated ``PATH`` scans.
+    """
+
+    if info is None:
+        info = detect_toolchains()
+    for name in names:
+        details = info.get(name)
+        if details and details.get("available"):
+            return name, details
+    return None, None
+
+
+def select_compiler(
+    preference: Tuple[str, ...] = ("g++", "clang++"),
+    info: Optional[Dict[str, ToolInfo]] = None,
+) -> Tuple[Optional[str], Optional[ToolInfo]]:
+    """Choose the first available C++ compiler from ``preference``."""
+
+    return _select_tool(preference, info)
+
+
+def select_coverage_tool(
+    preference: Tuple[str, ...] = ("llvm-cov", "gcov", "lcov"),
+    info: Optional[Dict[str, ToolInfo]] = None,
+) -> Tuple[Optional[str], Optional[ToolInfo]]:
+    """Choose the first available coverage tool from ``preference``."""
+
+    return _select_tool(preference, info)
+
+
+__all__ = [
+    "detect_toolchains",
+    "select_compiler",
+    "select_coverage_tool",
+    "ToolInfo",
+]
