@@ -23,11 +23,11 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
     [X] Generate project layout scaffold script for hrm-coder directory tree
-    [ ] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
-    [ ] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
-    [ ] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
+    [~] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
+    [~] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
+    [~] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
     [ ] Define Hydra config schema and default configs under conf/
-    [ ] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
+    [~] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
     [X] Implement environment pinning and seed/tz/locale normalization module
 
 ** [~] Phase 2: GUI Stub and Backend Skeleton
