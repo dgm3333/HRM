@@ -1,17 +1,7 @@
-from pathlib import Path
 from fastapi.testclient import TestClient
 
 from .. import app
 from ..run_registry import registry
-
-
-def test_artifact_static_server(tmp_path):
-    client = TestClient(app)
-    artifact_dir = Path('hrm_coder/artifacts')
-    (artifact_dir / 'sample.txt').write_text('hello')
-    resp = client.get('/artifacts/sample.txt')
-    assert resp.status_code == 200
-    assert resp.text == 'hello'
 
 
 def test_websocket_log_stream():

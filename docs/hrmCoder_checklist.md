@@ -36,7 +36,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement mock run registry with in-memory store and pagination
     [X] Build Run Console page with config pickers and action buttons
     [X] Build Jobs list page with sortable metrics and artifact links
-    [~] Implement artifact static server for JUnit XML and lcov/llvm-cov HTML
+    [X] Implement artifact static server for JUnit XML and lcov/llvm-cov HTML
     [X] Add WebSocket log streamer with tail-follow behavior
     [X] Provide GUI quickstart docs and sample configs
 

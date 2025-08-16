@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, List
 from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,6 +64,19 @@ def _init_artifact(run_id: int) -> None:
     if not placeholder.exists():
         placeholder.write_text("artifacts for run %d" % run_id)
     registry.get_run(run_id).artifact = f"/artifacts/run_{run_id}/"
+
+
+@app.get("/runs/{run_id}/artifacts")
+def list_artifacts(run_id: int) -> Dict[str, List[str]]:
+    """Return a list of artifact files for a run."""
+    run = registry.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    path = ARTIFACT_DIR / f"run_{run_id}"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="artifact not found")
+    files = [str(p.relative_to(path)) for p in path.rglob("*") if p.is_file()]
+    return {"files": files}
 
 
 @app.websocket("/logs/ws/{run_id}")
