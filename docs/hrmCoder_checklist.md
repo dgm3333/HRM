@@ -116,5 +116,6 @@ Save new code files in: C:\repos\hrm-coder
     [~] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
     [?] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
     [~] Configure static versus dynamic linking inside jail with rpath handling and ccache
+        - Added compile wrapper support for include paths, library directories, rpath, optional static builds, and ccache
     [ ] Create C++ security test suite for resource abuse and restricted syscalls
     [ ] Integrate C++ metrics and outcomes into common evaluator and reports
