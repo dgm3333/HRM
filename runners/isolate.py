@@ -1,6 +1,10 @@
+"""Lightweight wrapper for the ``isolate`` sandbox tool."""
+
+from __future__ import annotations
+
 import shutil
 import subprocess
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 
 class SandboxError(RuntimeError):
@@ -10,14 +14,19 @@ class SandboxError(RuntimeError):
 class IsolateRunner:
     """Adapter for the ``isolate`` sandbox tool.
 
-    This minimal wrapper constructs and runs ``isolate`` commands with
-    resource limits. It does not depend on the actual presence of the
-    ``isolate`` binary until :meth:`run` is invoked, enabling unit tests
-    to validate command construction without the binary installed.
+    The runner exposes a small subset of the ``isolate`` command line in a
+    Pythonic interface.  It performs the standard ``--init`` → ``--run`` →
+    ``--cleanup`` sequence for each invocation and allows callers to mount
+    additional read-only directories or specify an explicit working
+    directory inside the sandbox.  The implementation intentionally
+    constructs command lines without executing them, permitting unit tests
+    to exercise the wrapper even when the ``isolate`` binary is not
+    installed.
     """
 
-    def __init__(self, isolate_path: str = "isolate") -> None:
+    def __init__(self, isolate_path: str = "isolate", box_id: int = 0) -> None:
         self.isolate_path = isolate_path
+        self.box_id = box_id
 
     def build_command(
         self,
@@ -28,8 +37,12 @@ class IsolateRunner:
         memory: int = 256 * 1024,
         processes: int = 1,
         network: bool = False,
+        workdir: Optional[str] = None,
+        readonly_dirs: Optional[Iterable[str]] = None,
+        stdout: Optional[str] = None,
+        stderr: Optional[str] = None,
     ) -> List[str]:
-        """Build an ``isolate`` invocation.
+        """Build an ``isolate --run`` invocation.
 
         Parameters
         ----------
@@ -45,10 +58,20 @@ class IsolateRunner:
             Maximum number of allowed processes.
         network:
             Allow network access if ``True``.
+        workdir:
+            Path inside the sandbox to use as the working directory.  When
+            provided the same path on the host is mounted read-write.
+        readonly_dirs:
+            Optional collection of host directories to bind read-only
+            inside the sandbox at the same absolute paths.
+        stdout, stderr:
+            Optional filenames (inside the sandbox) to capture the
+            respective streams.
         """
         isolate_cmd = [
             self.isolate_path,
             "--cg",
+            f"--box-id={self.box_id}",
             f"--time={time_limit}",
             f"--wall={wall_time}",
             f"--mem={memory}",
@@ -56,7 +79,17 @@ class IsolateRunner:
         ]
         if not network:
             isolate_cmd.append("--net=none")
-        isolate_cmd.append("--")
+        if workdir is not None:
+            isolate_cmd.append(f"--dir={workdir}=rw")
+            isolate_cmd.append(f"--chdir={workdir}")
+        if readonly_dirs is not None:
+            for path in readonly_dirs:
+                isolate_cmd.append(f"--dir={path}=ro")
+        if stdout is not None:
+            isolate_cmd.append(f"--stdout={stdout}")
+        if stderr is not None:
+            isolate_cmd.append(f"--stderr={stderr}")
+        isolate_cmd.extend(["--run", "--"])
         isolate_cmd.extend(command)
         return isolate_cmd
 
@@ -69,29 +102,62 @@ class IsolateRunner:
         memory: int = 256 * 1024,
         processes: int = 1,
         network: bool = False,
+        workdir: Optional[str] = None,
+        readonly_dirs: Optional[Iterable[str]] = None,
+        stdout: Optional[str] = None,
+        stderr: Optional[str] = None,
         stdin: Optional[bytes] = None,
     ) -> subprocess.CompletedProcess:
-        """Execute a command within ``isolate``.
+        """Execute ``command`` within ``isolate``.
 
-        Returns the :class:`subprocess.CompletedProcess` object produced
-        by :func:`subprocess.run`.
+        The method performs the standard ``init`` → ``run`` → ``cleanup``
+        lifecycle for a single command invocation.  In case initialization
+        fails a :class:`SandboxError` is raised.  Execution errors of the
+        sandboxed command itself are reflected in the returned
+        :class:`subprocess.CompletedProcess` object and are not raised as
+        exceptions.
         """
         if shutil.which(self.isolate_path) is None:
             raise SandboxError(
                 f"isolate executable not found: {self.isolate_path}"
             )
-        cmd = self.build_command(
-            command,
-            time_limit=time_limit,
-            wall_time=wall_time,
-            memory=memory,
-            processes=processes,
-            network=network,
-        )
-        return subprocess.run(
-            cmd,
-            input=stdin,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+
+        init_cmd = [
+            self.isolate_path,
+            f"--box-id={self.box_id}",
+            "--init",
+        ]
+        init_proc = subprocess.run(init_cmd, capture_output=True, text=True)
+        if init_proc.returncode != 0:
+            raise SandboxError("isolate initialization failed")
+        try:
+            cmd = self.build_command(
+                command,
+                time_limit=time_limit,
+                wall_time=wall_time,
+                memory=memory,
+                processes=processes,
+                network=network,
+                workdir=workdir,
+                readonly_dirs=readonly_dirs,
+                stdout=stdout,
+                stderr=stderr,
+            )
+            proc = subprocess.run(
+                cmd,
+                input=stdin,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        finally:
+            subprocess.run(
+                [
+                    self.isolate_path,
+                    f"--box-id={self.box_id}",
+                    "--cleanup",
+                ],
+                capture_output=True,
+                text=True,
+            )
+        return proc
