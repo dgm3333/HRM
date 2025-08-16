@@ -294,6 +294,56 @@ def test_run_codeforces_tests_cache(tmp_path: Path, monkeypatch):
     assert first == second
 
 
+def test_run_codeforces_tests_cache_includes_flags(tmp_path: Path, monkeypatch):
+    src = tmp_path / "main.cpp"
+    src.write_text(
+        "#include <iostream>\nint main(){std::cout<<1;}"
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("\n")
+    (tests_dir / "a.out").write_text("1\n")
+
+    cache = SandboxCache(tmp_path / "cache_flags")
+    calls = {"compile": 0}
+    original_compile = cpp_runner.compile_cpp_sources
+
+    def wrapped_compile(*args, **kwargs):
+        calls["compile"] += 1
+        return original_compile(*args, **kwargs)
+
+    monkeypatch.setattr(cpp_runner, "compile_cpp_sources", wrapped_compile)
+
+    run_codeforces_tests([src], tests_dir, cache=cache, flags=["-DFOO=1"])
+    run_codeforces_tests([src], tests_dir, cache=cache, flags=["-DFOO=2"])
+    assert calls["compile"] == 2
+
+
+def test_run_codeforces_tests_cache_includes_env(tmp_path: Path, monkeypatch):
+    src = tmp_path / "main.cpp"
+    src.write_text(
+        "#include <iostream>\nint main(){std::cout<<1;}"
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("\n")
+    (tests_dir / "a.out").write_text("1\n")
+
+    cache = SandboxCache(tmp_path / "cache_env")
+    calls = {"compile": 0}
+    original_compile = cpp_runner.compile_cpp_sources
+
+    def wrapped_compile(*args, **kwargs):
+        calls["compile"] += 1
+        return original_compile(*args, **kwargs)
+
+    monkeypatch.setattr(cpp_runner, "compile_cpp_sources", wrapped_compile)
+
+    run_codeforces_tests([src], tests_dir, cache=cache, env={"A": "1"})
+    run_codeforces_tests([src], tests_dir, cache=cache, env={"A": "2"})
+    assert calls["compile"] == 2
+
+
 def test_run_codeforces_tests_coverage(tmp_path: Path) -> None:
     """Ensure coverage metrics are returned when requested."""
     src = tmp_path / "main.cpp"
