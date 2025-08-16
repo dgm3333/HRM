@@ -363,7 +363,7 @@ def run_binary(
 
     if sandbox is not None:
         memory_kb = (memory_limit or 256 * 1024 * 1024) // 1024
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
             try:
                 proc = sandbox.run(
                     [str(binary)],
@@ -371,7 +371,8 @@ def run_binary(
                     wall_time=int(timeout),
                     memory=memory_kb,
                     stdin=input_data,
-                    workdir=str(cwd),
+                    workdir=tmpdir,
+                    readonly_dirs=[str(cwd)],
                     env=env,
                     stdout_limit=stdout_limit,
                     stderr_limit=stderr_limit,

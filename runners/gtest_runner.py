@@ -104,6 +104,8 @@ def run_gtests(
     cache: Optional[SandboxCache] = None,
     collect_coverage: bool = False,
     sources: Optional[Sequence[Path]] = None,
+    stdout_limit: int = 10_000,
+    stderr_limit: int = 10_000,
 ) -> Dict[str, object]:
     """Execute ``binary`` and return parsed GoogleTest results.
 
@@ -124,6 +126,9 @@ def run_gtests(
     sources:
         Sequence of source files corresponding to the compiled
         binary. Required when ``collect_coverage`` is ``True``.
+    stdout_limit, stderr_limit:
+        Maximum number of characters captured from ``stdout`` and ``stderr``
+        when executing inside the sandbox.
     """
 
     key: Optional[str] = None
@@ -146,8 +151,9 @@ def run_gtests(
             return cached
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        xml_path = Path(tmpdir) / "report.xml"
-        cmd = [str(binary), f"--gtest_output=xml:{xml_path}"]
+        workdir = Path(tmpdir)
+        xml_file = "report.xml"
+        cmd = [str(binary), f"--gtest_output=xml:{xml_file}"]
         if sandbox is not None:
             try:
                 proc = sandbox.run(
@@ -155,18 +161,27 @@ def run_gtests(
                     time_limit=time_limit,
                     wall_time=wall_time,
                     memory=memory,
+                    workdir=str(workdir),
+                    readonly_dirs=[str(binary.parent)],
+                    stdout_limit=stdout_limit,
+                    stderr_limit=stderr_limit,
                 )
             except SandboxError as exc:  # pragma: no cover - defensive
                 raise GTestExecutionError("sandbox execution failed") from exc
         else:
             proc = subprocess.run(
-                cmd, capture_output=True, text=True, check=False
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=str(workdir),
             )
 
         if proc.returncode != 0:
             raise GTestExecutionError(
                 f"gtest binary exited with code {proc.returncode}"
             )
+        xml_path = workdir / xml_file
         if not xml_path.exists():  # pragma: no cover - defensive
             raise GTestExecutionError("gtest did not produce XML output")
         xml = xml_path.read_text()

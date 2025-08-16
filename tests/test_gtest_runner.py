@@ -1,4 +1,5 @@
 from pathlib import Path
+from pathlib import Path
 import sys
 import subprocess
 import shutil
@@ -52,13 +53,30 @@ def test_run_gtests(tmp_path):
     assert result["cases"][0]["passed"]
 
 
+def test_run_gtests_sandbox(tmp_path):
+    binary, _ = build_sample_test(tmp_path)
+    runner = SpyRunner()
+    run_gtests(binary, sandbox=runner)
+    assert runner.kwargs is not None
+    assert runner.kwargs["readonly_dirs"] == [str(binary.parent)]
+    assert runner.kwargs["workdir"] is not None
+
+
 class SpyRunner:
     def __init__(self) -> None:
         self.calls = 0
+        self.kwargs = None
 
     def run(self, cmd, **kwargs):
         self.calls += 1
-        return subprocess.run(cmd, capture_output=True, text=True, check=False)
+        self.kwargs = kwargs
+        return subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=kwargs.get("workdir"),
+        )
 
 
 def test_run_gtests_cache(tmp_path):
