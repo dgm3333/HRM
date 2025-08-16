@@ -105,6 +105,50 @@ def compile_cpp_sources(
     return success, proc.stdout, proc.stderr, output_path if success else None
 
 
+def compile_shared_library(
+    sources: Sequence[Path],
+    output: Optional[Path] = None,
+    *,
+    compiler: str = "g++",
+    flags: Optional[Iterable[str]] = None,
+    sanitize: bool = True,
+    use_ccache: bool = False,
+) -> Tuple[bool, str, str, Optional[Path]]:
+    """Compile ``sources`` into a shared library.
+
+    This helper produces a ``.so`` suitable for linking against binaries
+    compiled with :func:`compile_cpp_sources`.  It mirrors that function's
+    support for optional sanitizers and ``ccache`` to encourage deterministic
+    yet repeatable builds.
+    """
+
+    if flags is None:
+        flags = list(DEFAULT_FLAGS)
+    else:
+        flags = list(flags)
+    if sanitize:
+        flags = list(flags) + SANITIZER_FLAGS
+
+    flags = ["-shared", "-fPIC"] + list(flags)
+
+    if output is None:
+        tmp = tempfile.NamedTemporaryFile(suffix=".so", delete=False)
+        output_path = Path(tmp.name)
+        tmp.close()
+    else:
+        output_path = Path(output)
+
+    cmd: List[str] = [compiler]
+    if use_ccache and shutil.which("ccache") is not None:
+        cmd = ["ccache", compiler]
+
+    cmd += [str(s) for s in sources] + ["-o", str(output_path)] + list(flags)
+
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    success = proc.returncode == 0
+    return success, proc.stdout, proc.stderr, output_path if success else None
+
+
 def compile_cpp(
     source: Path,
     output: Optional[Path] = None,
@@ -158,7 +202,7 @@ def run_binary(
 
 
 def run_codeforces_tests(
-    source: Path,
+    sources: Sequence[Path],
     tests_dir: Path,
     *,
     compiler: str = "g++",
@@ -166,16 +210,29 @@ def run_codeforces_tests(
     sanitize: bool = True,
     timeout: float = 2.0,
     memory_limit: Optional[int] = None,
+    static: bool = False,
+    library_dirs: Optional[Iterable[Path]] = None,
+    libraries: Optional[Iterable[str]] = None,
+    rpath: Optional[Iterable[Path]] = None,
+    use_ccache: bool = False,
 ) -> dict:
-    """Compile ``source`` and run it against all tests in ``tests_dir``.
+    """Compile ``sources`` and run them against all tests in ``tests_dir``.
 
     The directory is expected to contain pairs of ``*.in`` and ``*.out`` files.
     Results are returned as a mapping with compile diagnostics and a list of
     per-test outcomes.
     """
 
-    success, out, err, binary = compile_cpp(
-        source, compiler=compiler, flags=flags, sanitize=sanitize
+    success, out, err, binary = compile_cpp_sources(
+        sources,
+        compiler=compiler,
+        flags=flags,
+        sanitize=sanitize,
+        static=static,
+        library_dirs=library_dirs,
+        libraries=libraries,
+        rpath=rpath,
+        use_ccache=use_ccache,
     )
     results = []
     if not success or binary is None:
