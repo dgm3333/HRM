@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 from pathlib import Path
 import json
-import xml.etree.ElementTree as ET
+import shutil
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -113,7 +113,11 @@ def coverage_summary(run_id: int) -> Dict[str, float]:
         data = json.loads(cov_path.read_text())
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="invalid coverage")
-    line_cov = data.get("line") or data.get("lines") or data.get("line_percent")
+    line_cov = (
+        data.get("line")
+        or data.get("lines")
+        or data.get("line_percent")
+    )
     try:
         line_cov = float(line_cov)
     except (TypeError, ValueError):
@@ -136,6 +140,19 @@ def update_run(run_id: int, payload: RunUpdate):
     if payload.status is not None:
         registry.update_status(run_id, payload.status)
     return registry.get_run(run_id)
+
+
+@app.delete("/runs/{run_id}", response_model=Run)
+def delete_run(run_id: int):
+    """Delete a run and its artifacts."""
+    run = registry.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    path = ARTIFACT_DIR / f"run_{run_id}"
+    if path.exists():
+        shutil.rmtree(path)
+    registry.delete_run(run_id)
+    return run
 
 
 class LogMessage(BaseModel):
