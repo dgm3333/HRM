@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .error_taxonomy import classify_compile, classify_runtime
+from .isolate import IsolateRunner, SandboxError
+from .sandbox_cache import SandboxCache
 from utils.diagnostics import compiler_diagnostics
 
 
@@ -223,8 +225,13 @@ def run_binary(
     timeout: float = 2.0,
     memory_limit: Optional[int] = None,
     env: Optional[Mapping[str, str]] = None,
+    sandbox: Optional[IsolateRunner] = None,
 ) -> Tuple[int, str, str]:
     """Execute a compiled ``binary`` with optional limits and environment.
+
+    When ``sandbox`` is provided the binary is executed inside that sandbox
+    runner.  Otherwise :func:`subprocess.run` is used directly with a simple
+    address-space limit.
 
     Parameters
     ----------
@@ -235,12 +242,28 @@ def run_binary(
     timeout:
         Maximum wall-clock time in seconds before termination.
     memory_limit:
-        Optional address-space limit in bytes.
+        Optional address-space limit in bytes.  When a sandbox is supplied the
+        value is converted to kilobytes for the adapter.
     env:
-        Extra environment variables to inject. Values override the current
-        process environment which enables dynamic library lookup via
-        ``LD_LIBRARY_PATH`` when rpath isn't provided.
+        Extra environment variables to inject when executing directly.
+    sandbox:
+        Optional :class:`~runners.isolate.IsolateRunner` used to enforce
+        resource limits and disable networking.
     """
+
+    if sandbox is not None:
+        memory_kb = (memory_limit or 256 * 1024 * 1024) // 1024
+        try:
+            proc = sandbox.run(
+                [str(binary)],
+                time_limit=int(timeout),
+                wall_time=int(timeout),
+                memory=memory_kb,
+                stdin=input_data,
+            )
+        except SandboxError as exc:
+            return -1, "", str(exc)
+        return proc.returncode, proc.stdout, proc.stderr
 
     def preexec() -> None:
         _set_limits(memory_limit)
@@ -272,6 +295,8 @@ def run_codeforces_tests(
     rpath: Optional[Iterable[Path]] = None,
     use_ccache: bool = False,
     env: Optional[Mapping[str, str]] = None,
+    sandbox: Optional[IsolateRunner] = None,
+    cache: Optional[SandboxCache] = None,
 ) -> dict:
     """Compile ``sources`` and run them against all tests in ``tests_dir``.
 
@@ -279,6 +304,20 @@ def run_codeforces_tests(
     Results include compilation diagnostics and a list of per-test outcomes
     with error classifications.
     """
+
+    key: Optional[str] = None
+    if cache is not None:
+        parts = [Path(s).read_bytes() for s in sources]
+        for f in sorted(Path(tests_dir).glob("*")):
+            if f.is_file():
+                parts.append(f.read_bytes())
+        parts.append(str(timeout).encode())
+        if memory_limit is not None:
+            parts.append(str(memory_limit).encode())
+        key = cache.hash_parts(parts)
+        cached = cache.load(key)
+        if cached is not None:
+            return cached
 
     compile_res = compile_cpp_sources(
         sources,
@@ -291,16 +330,22 @@ def run_codeforces_tests(
         rpath=rpath,
         use_ccache=use_ccache,
     )
-    compile_status = classify_compile(success, err)
+    compile_status = classify_compile(
+        compile_res.success, compile_res.stderr
+    )
     results = []
     if not compile_res.success or compile_res.binary is None:
-        return {
+        data = {
             "compile_stdout": compile_res.stdout,
             "compile_stderr": compile_res.stderr,
             "compile_warnings": compile_res.warnings,
             "compile_errors": compile_res.errors,
+            "compile_status": compile_status,
             "results": results,
         }
+        if cache is not None and key is not None:
+            cache.store(key, data)
+        return data
 
     for input_file in sorted(Path(tests_dir).glob("*.in")):
         test_name = input_file.stem
@@ -314,6 +359,7 @@ def run_codeforces_tests(
                 timeout=timeout,
                 memory_limit=memory_limit,
                 env=env,
+                sandbox=sandbox,
             )
             timed_out = False
         except subprocess.TimeoutExpired:
@@ -331,10 +377,14 @@ def run_codeforces_tests(
             }
         )
 
-    return {
+    data = {
         "compile_stdout": compile_res.stdout,
         "compile_stderr": compile_res.stderr,
         "compile_warnings": compile_res.warnings,
         "compile_errors": compile_res.errors,
+        "compile_status": compile_status,
         "results": results,
     }
+    if cache is not None and key is not None:
+        cache.store(key, data)
+    return data
