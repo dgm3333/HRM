@@ -41,7 +41,7 @@ class RunRegistry:
 
     def list_runs(self, offset: int = 0, limit: int = 10) -> List[Run]:
         runs = list(self._runs.values())
-        return runs[offset:offset + limit]
+        return runs[offset: offset + limit]
 
     def get_run(self, run_id: int) -> Optional[Run]:
         """Return run by id if it exists."""

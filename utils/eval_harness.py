@@ -1,14 +1,13 @@
-"""Utility functions for evaluation and reporting of code generation results.
+"""Utility helpers for evaluating code generation.
 
-This module provides helpers for computing pass@k metrics, checking determinism,
-identifying flaky tests, generating simple HTML/Markdown reports and bundling
-artifacts. These utilities support Phase 7 of the HRM Coder project plan.
+The functions here compute pass@k metrics, check determinism, detect
+flaky tests, generate simple HTML/Markdown reports, and bundle
+artifacts. They support Phase 7 of the HRM Coder project plan.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-import math
 import shutil
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List
@@ -36,7 +35,9 @@ def pass_at_k(num_correct: int, num_samples: int, k: int) -> float:
     return 1.0 - prod
 
 
-def compute_pass_at_k(task_results: Dict[str, Iterable[bool]], k: int) -> float:
+def compute_pass_at_k(
+    task_results: Dict[str, Iterable[bool]], k: int
+) -> float:
     """Compute mean pass@k across many tasks.
 
     ``task_results`` maps task identifiers to iterables of booleans where
@@ -56,21 +57,28 @@ class DeterminismResult:
     differences: Dict[str, List[Any]]
 
 
-def check_determinism(run: Callable[[], Dict[str, Any]], repeats: int = 2) -> DeterminismResult:
+def check_determinism(
+    run: Callable[[], Dict[str, Any]], repeats: int = 2
+) -> DeterminismResult:
     """Run ``run`` multiple times and verify outputs are identical.
 
     ``run`` should be a zero-argument callable returning a mapping of artifact
-    names to serialisable values. The function returns a :class:`DeterminismResult`
-    describing whether runs were identical and any differences found.
-    """
+    names to serialisable values. The function returns a
+    :class:`DeterminismResult` describing whether runs were identical and any
+      differences found.
+      """
     baseline = run()
     differences: Dict[str, List[Any]] = {}
     for _ in range(1, repeats):
         new = run()
         for key in set(baseline) | set(new):
             if baseline.get(key) != new.get(key):
-                differences.setdefault(key, []).extend([baseline.get(key), new.get(key)])
-    return DeterminismResult(deterministic=not differences, differences=differences)
+                differences.setdefault(key, []).extend(
+                    [baseline.get(key), new.get(key)]
+                )
+    return DeterminismResult(
+        deterministic=not differences, differences=differences
+    )
 
 
 def detect_flaky_tests(run_results: List[Dict[str, bool]]) -> List[str]:
@@ -100,7 +108,10 @@ def generate_report(metrics: Dict[str, Any], path: str) -> None:
             lines.append(f"- **{key}**: {value}")
         p.write_text("\n".join(lines))
     elif p.suffix.lower() in {".html", ".htm"}:
-        rows = "\n".join(f"<tr><th>{key}</th><td>{value}</td></tr>" for key, value in metrics.items())
+        rows = "\n".join(
+            f"<tr><th>{key}</th><td>{value}</td></tr>"
+            for key, value in metrics.items()
+        )
         html = f"<html><body><table>{rows}</table></body></html>"
         p.write_text(html)
     else:
@@ -137,7 +148,9 @@ def upload_bundle(bundle_path: str, dest_dir: str) -> str:
     return str(target)
 
 
-def bundle_and_upload(paths: Iterable[str], bundle_path: str, dest_dir: str) -> str:
+def bundle_and_upload(
+    paths: Iterable[str], bundle_path: str, dest_dir: str
+) -> str:
     """Bundle ``paths`` into ``bundle_path`` and upload to ``dest_dir``.
 
     Returns the path to the uploaded bundle.
@@ -146,11 +159,13 @@ def bundle_and_upload(paths: Iterable[str], bundle_path: str, dest_dir: str) -> 
     return upload_bundle(bundle_path, dest_dir)
 
 
-def compare_to_baseline(current: Dict[str, float], baseline_path: str) -> Dict[str, Dict[str, float]]:
+def compare_to_baseline(
+    current: Dict[str, float], baseline_path: str
+) -> Dict[str, Dict[str, float]]:
     """Compare ``current`` metrics to a JSON baseline.
 
-    The ``baseline_path`` should point to a JSON file containing a mapping of
-    metric names to numeric values. The returned dictionary maps metric names to
+    The ``baseline_path`` should point to a JSON file with metric names mapped
+    to numeric values. The returned dictionary maps metric names to
     dictionaries with ``baseline``, ``current`` and ``delta`` fields. Missing
     baseline values yield ``None`` deltas.
     """
@@ -160,5 +175,60 @@ def compare_to_baseline(current: Dict[str, float], baseline_path: str) -> Dict[s
     for key, cur_val in current.items():
         base_val = baseline.get(key)
         delta = cur_val - base_val if base_val is not None else None
-        comparison[key] = {"baseline": base_val, "current": cur_val, "delta": delta}
+        comparison[key] = {
+            "baseline": base_val,
+            "current": cur_val,
+            "delta": delta,
+        }
+    return comparison
+
+
+def generate_comparison_report(
+    current: Dict[str, float], baseline_path: str, report_path: str
+) -> Dict[str, Dict[str, float]]:
+    """Generate a report comparing ``current`` metrics to a baseline.
+
+    The function loads ``baseline_path`` using :func:`compare_to_baseline` and
+    writes a report to ``report_path``.  The output format mirrors
+    :func:`generate_report`:
+
+    * ``.md`` → Markdown table
+    * ``.html``/``.htm`` → HTML table
+    * any other extension → JSON
+
+    The structured comparison dictionary is returned for further processing.
+    """
+
+    comparison = compare_to_baseline(current, baseline_path)
+
+    p = Path(report_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if p.suffix.lower() == ".md":
+        lines = [
+            "# Baseline Comparison",
+            "",
+            "| metric | baseline | current | delta |",
+            "|---|---|---|---|",
+        ]
+        for metric, vals in comparison.items():
+            lines.append(
+                f"| {metric} | {vals['baseline']} | "
+                f"{vals['current']} | {vals['delta']} |"
+            )
+        p.write_text("\n".join(lines))
+    elif p.suffix.lower() in {".html", ".htm"}:
+        rows = "\n".join(
+            f"<tr><th>{metric}</th><td>{vals['baseline']}</td><td>"
+            f"{vals['current']}</td><td>{vals['delta']}</td></tr>"
+            for metric, vals in comparison.items()
+        )
+        html = (
+            "<html><body><table><tr><th>metric</th><th>baseline</th>"
+            "<th>current</th><th>delta</th></tr>"
+            f"{rows}</table></body></html>"
+        )
+        p.write_text(html)
+    else:
+        p.write_text(json.dumps(comparison, indent=2))
+
     return comparison
