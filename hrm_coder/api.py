@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Dict, List
 from pathlib import Path
-import xml.etree.ElementTree as ET
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+from utils.junit import parse_junit_summary
 
 from .run_registry import registry, Run
 
@@ -91,26 +92,10 @@ def junit_summary(run_id: int) -> Dict[str, int]:
     if not junit_path.exists():
         raise HTTPException(status_code=404, detail="junit not found")
     try:
-        root = ET.parse(junit_path).getroot()
-    except ET.ParseError:
+        passed, total = parse_junit_summary(junit_path.read_text())
+    except ValueError:
         raise HTTPException(status_code=400, detail="invalid junit")
-
-    def _extract(node: ET.Element) -> tuple[int, int]:
-        tests = int(node.attrib.get("tests", 0))
-        failures = int(node.attrib.get("failures", 0))
-        errors = int(node.attrib.get("errors", 0))
-        return tests, failures + errors
-
-    if root.tag == "testsuites":
-        total_tests = total_failures = 0
-        for child in root.findall("testsuite"):
-            t, f = _extract(child)
-            total_tests += t
-            total_failures += f
-    else:
-        total_tests, total_failures = _extract(root)
-
-    return {"tests": total_tests, "failures": total_failures}
+    return {"tests": total, "failures": total - passed}
 
 
 class RunUpdate(BaseModel):
