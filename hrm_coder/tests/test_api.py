@@ -7,6 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from hrm_coder import app
 
 
+
 def test_run_lifecycle():
     client = TestClient(app)
 

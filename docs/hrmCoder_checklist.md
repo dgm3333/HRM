@@ -12,7 +12,7 @@ Save new code files in: C:\repos\hrm-coder
 # Progress Checklist
 
 ** [~] Phase 0: Discovery & Reuse Audit
-    [~] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
+    [X] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
     [ ] Setup project operation within isolate/gVisor runner images
     [ ] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
     [ ] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes
@@ -23,11 +23,11 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
     [X] Generate project layout scaffold script for hrm-coder directory tree
-    [ ] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
-    [ ] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
-    [ ] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
+    [~] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
+    [~] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
+    [~] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
     [ ] Define Hydra config schema and default configs under conf/
-    [ ] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
+    [~] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
     [X] Implement environment pinning and seed/tz/locale normalization module
 
 ** [~] Phase 2: GUI Stub and Backend Skeleton
