@@ -46,3 +46,13 @@ class AtCoderRecord(BaseModel):
     tests: List[IOPairRecord]
     time_limit_ms: int = Field(default=2000, ge=1)
     memory_limit_kb: int = Field(default=102_400, ge=1)
+
+
+class KattisRecord(BaseModel):
+    """Schema for a Kattis micro dataset record."""
+
+    task_id: str
+    prompt: str
+    tests: List[IOPairRecord]
+    time_limit_ms: int = Field(default=2000, ge=1)
+    memory_limit_kb: int = Field(default=256_000, ge=1)
