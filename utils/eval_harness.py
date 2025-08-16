@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import math
+import shutil
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List
 import zipfile
@@ -120,3 +121,44 @@ def bundle_artifacts(paths: Iterable[str], bundle_path: str) -> None:
             p = Path(p)
             if p.exists():
                 zf.write(p, p.name)
+
+
+def upload_bundle(bundle_path: str, dest_dir: str) -> str:
+    """Upload a bundle to ``dest_dir`` by copying it.
+
+    This simple uploader is intended for local file systems and is sufficient
+    for tests and CI environments. Returns the destination path of the copied
+    bundle.
+    """
+    dest = Path(dest_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    target = dest / Path(bundle_path).name
+    shutil.copy2(bundle_path, target)
+    return str(target)
+
+
+def bundle_and_upload(paths: Iterable[str], bundle_path: str, dest_dir: str) -> str:
+    """Bundle ``paths`` into ``bundle_path`` and upload to ``dest_dir``.
+
+    Returns the path to the uploaded bundle.
+    """
+    bundle_artifacts(paths, bundle_path)
+    return upload_bundle(bundle_path, dest_dir)
+
+
+def compare_to_baseline(current: Dict[str, float], baseline_path: str) -> Dict[str, Dict[str, float]]:
+    """Compare ``current`` metrics to a JSON baseline.
+
+    The ``baseline_path`` should point to a JSON file containing a mapping of
+    metric names to numeric values. The returned dictionary maps metric names to
+    dictionaries with ``baseline``, ``current`` and ``delta`` fields. Missing
+    baseline values yield ``None`` deltas.
+    """
+    p = Path(baseline_path)
+    baseline = json.loads(p.read_text()) if p.exists() else {}
+    comparison: Dict[str, Dict[str, float]] = {}
+    for key, cur_val in current.items():
+        base_val = baseline.get(key)
+        delta = cur_val - base_val if base_val is not None else None
+        comparison[key] = {"baseline": base_val, "current": cur_val, "delta": delta}
+    return comparison

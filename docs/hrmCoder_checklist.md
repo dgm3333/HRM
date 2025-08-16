@@ -77,8 +77,8 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement determinism checker to re-run top-k with shuffled ordering
     [X] Implement flaky-test detector and flagging in results
     [X] Build HTML and Markdown report generator with tables and plots
-    [ ] Implement baseline comparator against recorded C++ code-LM prompts
-    [~] Implement artifact bundler and uploader for reports and raw JSON
+    [~] Implement baseline comparator against recorded C++ code-LM prompts
+    [X] Implement artifact bundler and uploader for reports and raw JSON
 
 ** [ ] Phase 8: CI/CD and Automation
     [~] Create GitHub Actions workflow for C++ lint (clang-tidy/clang-format) and unit tests on PRs
