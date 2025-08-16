@@ -18,9 +18,22 @@ RUN apt-get update && \
         python3 \
         python3-pip \
         isolate \
-    && rm -rf /var/lib/apt/lists/*
+        pkg-config \
+        libprotobuf-dev \
+        protobuf-compiler \
+        libnl-route-3-dev \
+        libcap-dev \
+        libseccomp-dev \
+        zlib1g-dev \
+        llvm \
+        libclang-rt-14-dev \
+    && rm -rf /var/lib/apt/lists/* && \
+    git clone https://github.com/google/nsjail.git /tmp/nsjail && \
+    make -C /tmp/nsjail && \
+    mv /tmp/nsjail/nsjail /usr/local/bin/nsjail && \
+    rm -rf /tmp/nsjail
 
-# TODO: Install nsjail and sanitizer tools
+# nsjail provides process isolation; llvm packages enable sanitizer builds
 
 WORKDIR /workspace
 
