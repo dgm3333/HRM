@@ -22,7 +22,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 from tree_sitter import Node, Tree
-from tree_sitter_languages import get_parser
+try:  # pragma: no cover - import guard
+    from tree_sitter_languages import get_parser
+except Exception as exc:  # pragma: no cover - runtime environment may lack compiled grammars
+    get_parser = None  # type: ignore[assignment]
+    _PARSER_ERROR = exc
 
 
 @dataclass
@@ -39,14 +43,35 @@ class EditResult:
 
 
 class CppAst:
-    """Thin wrapper around a Tree-sitter C++ parser."""
+    """Thin wrapper around a Tree-sitter C++ parser.
+
+    The constructor attempts to load the pre-built C++ grammar from
+    :mod:`tree_sitter_languages`.  In environments where the compiled
+    grammars are unavailable (e.g. missing wheels for the running Python
+    version) the object is still created but ``parse`` will raise a
+    :class:`RuntimeError`.  This allows callers and tests to gracefully
+    skip AST-edit features when the dependency is missing.
+    """
 
     def __init__(self) -> None:
-        self.parser = get_parser("cpp")
+        self._init_error: Exception | None = None
+        if get_parser is None:
+            self.parser = None
+            self._init_error = _PARSER_ERROR
+        else:
+            try:
+                self.parser = get_parser("cpp")
+            except Exception as exc:  # pragma: no cover - missing grammar
+                self.parser = None
+                self._init_error = exc
 
     def parse(self, code: str) -> Tree:
         """Parse ``code`` into a :class:`Tree`."""
 
+        if self.parser is None:
+            raise RuntimeError(
+                "Tree-sitter C++ parser unavailable"
+            ) from self._init_error
         return self.parser.parse(bytes(code, "utf8"))
 
     def replace(self, code: str, node: Node, replacement: str, *, reparse: bool = True) -> EditResult:
@@ -93,4 +118,3 @@ class CppAst:
             return True
         except Exception:
             return False
-
