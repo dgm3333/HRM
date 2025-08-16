@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
+from .error_taxonomy import classify_compile, classify_runtime
 from utils.diagnostics import compiler_diagnostics
 
 
@@ -275,8 +276,8 @@ def run_codeforces_tests(
     """Compile ``sources`` and run them against all tests in ``tests_dir``.
 
     The directory is expected to contain pairs of ``*.in`` and ``*.out`` files.
-    Results are returned as a mapping with compile diagnostics and a list of
-    per-test outcomes.
+    Results include compilation diagnostics and a list of per-test outcomes
+    with error classifications.
     """
 
     compile_res = compile_cpp_sources(
@@ -290,6 +291,7 @@ def run_codeforces_tests(
         rpath=rpath,
         use_ccache=use_ccache,
     )
+    compile_status = classify_compile(success, err)
     results = []
     if not compile_res.success or compile_res.binary is None:
         return {
@@ -313,8 +315,11 @@ def run_codeforces_tests(
                 memory_limit=memory_limit,
                 env=env,
             )
+            timed_out = False
         except subprocess.TimeoutExpired:
             code, stdout, stderr = -1, "", "TIMEOUT"
+            timed_out = True
+        error_type = classify_runtime(code, stderr, timed_out=timed_out)
         passed = stdout.strip() == expected.strip() and code == 0
         results.append(
             {
@@ -322,6 +327,7 @@ def run_codeforces_tests(
                 "passed": passed,
                 "stdout": stdout,
                 "stderr": stderr,
+                "error_type": error_type,
             }
         )
 
