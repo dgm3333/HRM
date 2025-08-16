@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .error_taxonomy import classify_compile, classify_runtime
+from .isolate import IsolateRunner
 from utils.diagnostics import compiler_diagnostics
 
 
@@ -223,6 +224,7 @@ def run_binary(
     timeout: float = 2.0,
     memory_limit: Optional[int] = None,
     env: Optional[Mapping[str, str]] = None,
+    sandbox: Optional[IsolateRunner] = None,
 ) -> Tuple[int, str, str]:
     """Execute a compiled ``binary`` with optional limits and environment.
 
@@ -240,7 +242,32 @@ def run_binary(
         Extra environment variables to inject. Values override the current
         process environment which enables dynamic library lookup via
         ``LD_LIBRARY_PATH`` when rpath isn't provided.
+    sandbox:
+        Optional :class:`~runners.isolate.IsolateRunner` used to execute the
+        binary in a restricted environment.  When omitted the program is run
+        directly via :func:`subprocess.run` with best-effort ``rlimit``
+        enforcement.
     """
+
+    if sandbox is not None:
+        cmd: List[str]
+        if env:
+            cmd = ["env"] + [f"{k}={v}" for k, v in env.items()]
+            cmd.append(str(binary))
+        else:
+            cmd = [str(binary)]
+        proc = sandbox.run(
+            cmd,
+            time_limit=int(timeout),
+            wall_time=int(timeout),
+            memory=(
+                (memory_limit // 1024)
+                if memory_limit is not None
+                else 256 * 1024
+            ),
+            stdin=input_data.encode(),
+        )
+        return proc.returncode, proc.stdout, proc.stderr
 
     def preexec() -> None:
         _set_limits(memory_limit)
@@ -272,12 +299,16 @@ def run_codeforces_tests(
     rpath: Optional[Iterable[Path]] = None,
     use_ccache: bool = False,
     env: Optional[Mapping[str, str]] = None,
+    sandbox: Optional[IsolateRunner] = None,
 ) -> dict:
     """Compile ``sources`` and run them against all tests in ``tests_dir``.
 
     The directory is expected to contain pairs of ``*.in`` and ``*.out`` files.
     Results include compilation diagnostics and a list of per-test outcomes
-    with error classifications.
+    with error classifications.  The ``sandbox`` parameter allows executing
+    each test run inside an :class:`~runners.isolate.IsolateRunner` to enforce
+    hard resource limits and disable networking, aligning with Phase 10's
+    extended judge goals.
     """
 
     compile_res = compile_cpp_sources(
@@ -291,7 +322,7 @@ def run_codeforces_tests(
         rpath=rpath,
         use_ccache=use_ccache,
     )
-    compile_status = classify_compile(success, err)
+    compile_status = classify_compile(compile_res.success, compile_res.stderr)
     results = []
     if not compile_res.success or compile_res.binary is None:
         return {
@@ -299,6 +330,7 @@ def run_codeforces_tests(
             "compile_stderr": compile_res.stderr,
             "compile_warnings": compile_res.warnings,
             "compile_errors": compile_res.errors,
+            "compile_status": compile_status,
             "results": results,
         }
 
@@ -314,6 +346,7 @@ def run_codeforces_tests(
                 timeout=timeout,
                 memory_limit=memory_limit,
                 env=env,
+                sandbox=sandbox,
             )
             timed_out = False
         except subprocess.TimeoutExpired:
@@ -336,5 +369,6 @@ def run_codeforces_tests(
         "compile_stderr": compile_res.stderr,
         "compile_warnings": compile_res.warnings,
         "compile_errors": compile_res.errors,
+        "compile_status": compile_status,
         "results": results,
     }
