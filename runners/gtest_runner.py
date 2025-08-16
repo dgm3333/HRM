@@ -15,6 +15,7 @@ from typing import Dict, List, Optional
 from xml.etree import ElementTree as ET
 
 from .isolate import IsolateRunner, SandboxError
+from .sandbox_cache import SandboxCache
 
 
 class GTestExecutionError(RuntimeError):
@@ -56,6 +57,7 @@ def run_gtests(
     time_limit: int = 5,
     wall_time: int = 5,
     memory: int = 256 * 1024,
+    cache: Optional[SandboxCache] = None,
 ) -> Dict[str, object]:
     """Execute ``binary`` and return parsed GoogleTest results.
 
@@ -67,7 +69,24 @@ def run_gtests(
         Optional :class:`IsolateRunner` to enforce resource limits.
     time_limit, wall_time, memory:
         Resource limits forwarded to the sandbox runner.
+    cache:
+        Optional :class:`SandboxCache` instance used to memoize results for
+        identical binaries and limits.
     """
+
+    key: Optional[str] = None
+    if cache is not None:
+        key = cache.hash_parts(
+            [
+                binary.read_bytes(),
+                str(time_limit).encode(),
+                str(wall_time).encode(),
+                str(memory).encode(),
+            ]
+        )
+        cached = cache.load(key)
+        if cached is not None:
+            return cached
 
     with tempfile.TemporaryDirectory() as tmpdir:
         xml_path = Path(tmpdir) / "report.xml"
@@ -92,4 +111,8 @@ def run_gtests(
         if not xml_path.exists():  # pragma: no cover - defensive
             raise GTestExecutionError("gtest did not produce XML output")
         xml = xml_path.read_text()
-    return _parse_gtest_xml(xml)
+
+    result = _parse_gtest_xml(xml)
+    if cache is not None and key is not None:
+        cache.store(key, result)
+    return result

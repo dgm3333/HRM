@@ -2,7 +2,12 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 import logging
 
-from .diagnostics import clang_tidy_score, cppcheck_score, coverage_delta
+from .diagnostics import (
+    clang_tidy_score,
+    cppcheck_score,
+    coverage_delta,
+    sanitizer_clean,
+)
 
 
 @dataclass
@@ -13,7 +18,7 @@ class RewardAggregator:
     ----------
     weights: mapping of signal name to weight. Supported keys are
         ``compile``, ``tests``, ``coverage``, ``coverage_delta``,
-        ``lint`` and ``static``.
+        ``lint``, ``static`` and ``sanitizer``.
     max_edit_penalty: maximum penalty applied for edit cost.
     max_time_penalty: maximum penalty applied when runtime exceeds the limit.
     max_memory_penalty: maximum penalty applied when memory use exceeds the limit.
@@ -36,6 +41,7 @@ class RewardAggregator:
         memory_used: float,
         lint_score: float = 1.0,
         static_score: float = 1.0,
+        sanitizer_clean: bool | None = None,
         prev_coverage: float | None = None,
         time_limit: float | None = None,
         memory_limit: float | None = None,
@@ -53,6 +59,8 @@ class RewardAggregator:
         memory_used: peak memory usage in megabytes.
         lint_score: normalized score from clang-tidy/clang diagnostics.
         static_score: normalized score from static analysis tools (e.g. cppcheck).
+        sanitizer_clean: whether Address/UndefinedBehavior sanitizers reported
+            no issues. ``None`` skips this signal.
         prev_coverage: previous coverage value used to compute coverage delta.
         time_limit: optional runtime limit.
         memory_limit: optional memory limit.
@@ -76,6 +84,9 @@ class RewardAggregator:
         reward += self.weights.get("coverage_delta", 0.0) * cov_delta
         reward += self.weights.get("lint", 0.0) * max(0.0, min(lint_score, 1.0))
         reward += self.weights.get("static", 0.0) * max(0.0, min(static_score, 1.0))
+        if sanitizer_clean is not None:
+            san_score = 1.0 if sanitizer_clean else -1.0
+            reward += self.weights.get("sanitizer", 0.0) * san_score
 
         # Penalties
         reward -= min(edit_cost * self.max_edit_penalty, self.max_edit_penalty)
@@ -103,18 +114,41 @@ class RewardAggregator:
         memory_used: float,
         clang_output: str = "",
         cppcheck_output: str = "",
+        sanitizer_output: str | None = None,
         prev_coverage: float | None = None,
         time_limit: float | None = None,
         memory_limit: float | None = None,
     ) -> float:
         """Compute reward using raw diagnostics output strings.
 
-        Convenience wrapper that parses ``clang_output`` and ``cppcheck_output``
-        into normalized scores before delegating to :meth:`compute`.
+        Convenience wrapper that parses ``clang_output``, ``cppcheck_output``
+        and ``sanitizer_output`` into normalized scores before delegating to
+        :meth:`compute`.
+
+        Parameters
+        ----------
+        clang_output:
+            Raw stderr/stdout from clang-tidy/clang++.
+        cppcheck_output:
+            Raw output from cppcheck.
+        sanitizer_output:
+            Combined stdout/stderr from sanitizer-instrumented runs. ``None``
+            skips sanitizer scoring.
+        prev_coverage:
+            Previous coverage used to compute deltas.
+        time_limit:
+            Optional runtime limit used for penalties.
+        memory_limit:
+            Optional memory limit used for penalties.
         """
 
         lint = clang_tidy_score(clang_output)
         static = cppcheck_score(cppcheck_output)
+        san = (
+            sanitizer_clean(sanitizer_output)
+            if sanitizer_output is not None
+            else None
+        )
         return self.compute(
             compile_success=compile_success,
             tests_passed=tests_passed,
@@ -125,6 +159,7 @@ class RewardAggregator:
             memory_used=memory_used,
             lint_score=lint,
             static_score=static,
+            sanitizer_clean=san,
             prev_coverage=prev_coverage,
             time_limit=time_limit,
             memory_limit=memory_limit,

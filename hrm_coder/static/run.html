@@ -33,6 +33,7 @@
     ws.onmessage = (ev) => {
       const pre = document.getElementById('logs');
       pre.textContent += ev.data + '\n';
+      pre.scrollTop = pre.scrollHeight;
     };
   </script>
 </body>

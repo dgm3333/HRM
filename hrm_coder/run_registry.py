@@ -41,7 +41,7 @@ class RunRegistry:
 
     def list_runs(self, offset: int = 0, limit: int = 10) -> List[Run]:
         runs = list(self._runs.values())
-        return runs[offset:offset + limit]
+        return runs[offset: offset + limit]
 
     def get_run(self, run_id: int) -> Optional[Run]:
         """Return run by id if it exists."""
@@ -60,7 +60,11 @@ class RunRegistry:
 
     def get_logs(self, run_id: int) -> List[str]:
         run = self._runs.get(run_id)
-        return run.logs if run else []
+        if run is None:
+            run = Run(id=run_id, version=collect_version_info())
+            self._runs[run_id] = run
+            self._log_queues.setdefault(run_id, asyncio.Queue())
+        return run.logs
 
     def get_log_queue(self, run_id: int) -> "asyncio.Queue[str]":
         return self._log_queues.setdefault(run_id, asyncio.Queue())

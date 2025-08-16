@@ -10,7 +10,7 @@ development.
 """
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import torch
 from torch import nn
@@ -32,8 +32,9 @@ class HRMTrainer:
     Parameters
     ----------
     model:
-        A module returning ``(logits, value)`` when called.  ``logits`` are used
-        for policy decisions while ``value`` estimates the baseline reward.
+        A module returning ``(logits, value)`` when called.  ``logits`` are
+        used for policy decisions while ``value`` estimates the baseline
+        reward.
     optimizer:
         Optimiser used to update ``model`` parameters.
     config:
@@ -77,6 +78,17 @@ class HRMTrainer:
         self.optimizer.zero_grad(set_to_none=True)
         return float(loss.detach())
 
+    def sft_epoch(
+        self, dataloader: Iterable[Tuple[torch.Tensor, torch.Tensor]]
+    ) -> float:
+        """Run an SFT epoch over ``dataloader`` and return the average loss."""
+        total_loss = 0.0
+        count = 0
+        for inputs, targets in dataloader:
+            total_loss += self.sft_step(inputs, targets)
+            count += 1
+        return total_loss / max(1, count)
+
     # ------------------------------------------------------------------
     # Reinforcement learning (REINFORCE with baseline)
     # ------------------------------------------------------------------
@@ -87,9 +99,9 @@ class HRMTrainer:
     ) -> Dict[str, float]:
         """Run a REINFORCE update using ``reward_fn``.
 
-        The model is expected to output ``(logits, value)``.  ``reward_fn`` is a
-        callable that receives sampled actions and returns a reward tensor.  A
-        dictionary containing basic metrics is returned to aid debugging.
+        The model is expected to output ``(logits, value)``.  ``reward_fn`` is
+        a callable that receives sampled actions and returns a reward tensor.
+        A dictionary containing basic metrics is returned to aid debugging.
         """
         self.model.train()
         logits, value = self.model(inputs)
@@ -116,6 +128,26 @@ class HRMTrainer:
             "entropy": float(entropy.detach()),
             "reward": float(reward.detach().mean()),
         }
+
+    def reinforce_epoch(
+        self,
+        dataloader: Iterable[torch.Tensor],
+        reward_fn: Callable[[torch.Tensor], torch.Tensor],
+    ) -> Dict[str, float]:
+        """Run a REINFORCE epoch and return averaged statistics."""
+        agg = {
+            "policy_loss": 0.0,
+            "value_loss": 0.0,
+            "entropy": 0.0,
+            "reward": 0.0,
+        }
+        count = 0
+        for inputs in dataloader:
+            stats = self.reinforce_step(inputs, reward_fn)
+            for k, v in stats.items():
+                agg[k] += v
+            count += 1
+        return {k: v / max(1, count) for k, v in agg.items()}
 
 
 __all__ = ["HRMTrainer", "HRMTrainingConfig"]
