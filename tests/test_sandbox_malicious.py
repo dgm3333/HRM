@@ -1,4 +1,3 @@
-import os
 import shutil
 import sys
 from pathlib import Path
@@ -7,9 +6,9 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from runners.cpp_runner import compile_cpp, run_binary
-from runners.error_taxonomy import classify_runtime
-from runners.isolate import IsolateRunner
+from runners.cpp_runner import compile_cpp, run_binary  # noqa: E402
+from runners.error_taxonomy import classify_runtime  # noqa: E402
+from runners.isolate import IsolateRunner  # noqa: E402
 
 pytestmark = pytest.mark.skipif(
     shutil.which("isolate") is None, reason="isolate not available"
@@ -40,6 +39,31 @@ int main() {
     if (fd == -1) {
         perror("open");
         return 1;
+    }
+    close(fd);
+    return 0;
+}
+"""
+    binary = _compile(code, tmp_path)
+    rc, _out, err = _run(binary)
+    assert rc != 0
+    assert classify_runtime(rc, err) == "policy_violation"
+
+
+def test_file_write_denied(tmp_path):
+    code = r"""
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+
+int main() {
+    int fd = open("/etc/passwd", O_WRONLY|O_CREAT, 0644);
+    if (fd == -1) {
+        perror("open");
+        return 1;
+    }
+    if (write(fd, "hi", 2) == -1) {
+        perror("write");
     }
     close(fd);
     return 0;
@@ -110,4 +134,3 @@ int main() {
     rc, _out, err = _run(binary)
     assert rc != 0
     assert classify_runtime(rc, err) in {"policy_violation", "runtime_error"}
-
