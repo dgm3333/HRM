@@ -1,4 +1,4 @@
-.PHONY: data build_runner train eval report
+.PHONY: data build_runner train eval report smoke
 
 # Placeholder targets for Phase 1 scaffold
 
@@ -12,7 +12,10 @@ train:
 	python train.py
 
 eval:
-	python evaluate.py
+        python evaluate.py
 
 report:
-	@echo "Report generation not implemented yet"
+        @echo "Report generation not implemented yet"
+
+smoke:
+        python scripts/smoke_train.py
