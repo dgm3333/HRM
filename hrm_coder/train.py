@@ -41,7 +41,12 @@ def main() -> None:
     """Run a tiny end-to-end training demo."""
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seed", type=int, default=0, help="PRNG seed")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Override deterministic seed from configuration",
+    )
     parser.add_argument(
         "--checkpoint",
         type=str,
@@ -61,8 +66,10 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config(args.overrides)
-    pin_environment(args.seed)
-    torch.manual_seed(args.seed)
+
+    seed = args.seed if args.seed is not None else cfg.environment.seed
+    pin_environment(seed, cfg.environment.timezone, cfg.environment.locale)
+    torch.manual_seed(seed)
 
     print("Loaded configuration:")
     print(pformat(asdict(cfg)))
@@ -73,7 +80,7 @@ def main() -> None:
     targets = torch.arange(5) % vocab
     dataset = TensorDataset(inputs, targets)
     g = torch.Generator()
-    g.manual_seed(args.seed)
+    g.manual_seed(seed)
     loader = DataLoader(dataset, batch_size=1, shuffle=True, generator=g)
 
     # Initialise model and trainer.

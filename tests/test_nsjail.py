@@ -26,3 +26,11 @@ def test_build_command_allows_network_when_requested():
     runner = NSJailRunner(nsjail_path="nsjail")
     cmd = runner.build_command(["/bin/echo", "hi"], network=True)
     assert "--disable_clone_newnet" in cmd
+
+
+def test_build_command_with_env():
+    runner = NSJailRunner(nsjail_path="nsjail")
+    cmd = runner.build_command(["/bin/true"], env={"LD_LIBRARY_PATH": "/libs"})
+    assert "--env" in cmd
+    env_idx = cmd.index("--env")
+    assert cmd[env_idx + 1] == "LD_LIBRARY_PATH=/libs"

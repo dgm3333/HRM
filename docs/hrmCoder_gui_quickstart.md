@@ -31,4 +31,7 @@ curl http://localhost:8000/artifacts/run_1/result.xml
 
 # Get coverage summary
 curl http://localhost:8000/runs/1/coverage
+
+# Delete a run
+curl -X DELETE http://localhost:8000/runs/1
 ```

@@ -23,6 +23,15 @@ class DatasetConfig:
 
 
 @dataclass
+class EnvironmentConfig:
+    """Process-wide environment settings for determinism."""
+
+    seed: int = 0
+    timezone: str = "UTC"
+    locale: str = "C"
+
+
+@dataclass
 class RunnerConfig:
     """Configuration for the sandbox runner.
 
@@ -67,6 +76,7 @@ class AppConfig:
     runner: RunnerConfig = field(default_factory=RunnerConfig)
     acceptance: AcceptanceConfig = field(default_factory=AcceptanceConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
+    environment: EnvironmentConfig = field(default_factory=EnvironmentConfig)
 
 
 def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
@@ -90,6 +100,7 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
         runner=RunnerConfig(**cfg_dict["runner"]),
         acceptance=AcceptanceConfig(**cfg_dict["acceptance"]),
         training=TrainingConfig(**cfg_dict["training"]),
+        environment=EnvironmentConfig(**cfg_dict["environment"]),
     )
 
 
@@ -100,5 +111,6 @@ __all__ = [
     "RunnerConfig",
     "AcceptanceConfig",
     "TrainingConfig",
+    "EnvironmentConfig",
     "load_config",
 ]

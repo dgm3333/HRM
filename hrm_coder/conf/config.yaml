@@ -4,4 +4,5 @@ defaults:
   - runner: default
   - training: default
   - acceptance: default
+  - environment: default
   - _self_

@@ -125,7 +125,9 @@ def compile_cpp_sources(
         for p in rpath:
             cmd.append(f"-Wl,-rpath,{p}")
 
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     success = proc.returncode == 0
     warnings, errors = compiler_diagnostics(proc.stdout, proc.stderr)
     return CompileResult(
@@ -177,7 +179,9 @@ def compile_shared_library(
 
     cmd += [str(s) for s in sources] + ["-o", str(output_path)] + list(flags)
 
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     success = proc.returncode == 0
     warnings, errors = compiler_diagnostics(proc.stdout, proc.stderr)
     return CompileResult(
@@ -234,7 +238,9 @@ def compile_static_library(
         if use_ccache and shutil.which("ccache") is not None:
             cmd = ["ccache", compiler]
         cmd += [str(src), "-c", "-o", str(obj_path)] + list(flags)
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
         stdout_parts.append(proc.stdout)
         stderr_parts.append(proc.stderr)
         w, e = compiler_diagnostics(proc.stdout, proc.stderr)
@@ -252,7 +258,9 @@ def compile_static_library(
         objs.append(obj_path)
 
     ar_cmd = ["ar", "rcs", str(output_path)] + [str(o) for o in objs]
-    ar_proc = subprocess.run(ar_cmd, capture_output=True, text=True)
+    ar_proc = subprocess.run(
+        ar_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     stdout_parts.append(ar_proc.stdout)
     stderr_parts.append(ar_proc.stderr)
     success = ar_proc.returncode == 0
@@ -323,7 +331,9 @@ def run_binary(
         Optional address-space limit in bytes.  When a sandbox is supplied the
         value is converted to kilobytes for the adapter.
     env:
-        Extra environment variables to inject when executing directly.
+        Extra environment variables to inject. When a sandbox is provided
+        the variables are forwarded to it, otherwise they are passed to
+        :func:`subprocess.run` directly.
     sandbox:
         Optional :class:`~runners.isolate.IsolateRunner` used to enforce
         resource limits and disable networking.
@@ -347,15 +357,26 @@ def run_binary(
                     memory=memory_kb,
                     stdin=input_data,
                     workdir=str(cwd),
+                    env=env,
                 )
             except TypeError:
-                proc = sandbox.run(
-                    [str(binary)],
-                    time_limit=int(timeout),
-                    wall_time=int(timeout),
-                    memory=memory_kb,
-                    stdin=input_data,
-                )
+                try:
+                    proc = sandbox.run(
+                        [str(binary)],
+                        time_limit=int(timeout),
+                        wall_time=int(timeout),
+                        memory=memory_kb,
+                        stdin=input_data,
+                        env=env,
+                    )
+                except TypeError:
+                    proc = sandbox.run(
+                        [str(binary)],
+                        time_limit=int(timeout),
+                        wall_time=int(timeout),
+                        memory=memory_kb,
+                        stdin=input_data,
+                    )
         except SandboxError as exc:
             return -1, "", str(exc)
         return proc.returncode, proc.stdout, proc.stderr
@@ -368,6 +389,8 @@ def run_binary(
         input=input_data,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=timeout,
         preexec_fn=preexec,
         env={**os.environ, **env} if env is not None else None,
@@ -410,6 +433,8 @@ def _collect_coverage(sources: Sequence[Path], workdir: Path) -> float:
             ["gcov", str(src), "-o", str(workdir)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=str(workdir),
             check=False,
         )

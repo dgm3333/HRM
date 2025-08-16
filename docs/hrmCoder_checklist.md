@@ -19,9 +19,9 @@ Save new code files in: C:\repos\hrm-coder
         - Added toolchain detection utility for g++, clang++, lcov, llvm-cov, and gcov
     [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
-    [ ] Draft sandbox Threat Model and initial security requirements for native binaries
-    [ ] Write ADRs for sandbox choice, experiment tracker, and GUI stack
-    [ ] Create initial risk register and mitigation plan
+    [~] Draft sandbox Threat Model and initial security requirements for native binaries
+    [~] Write ADRs for sandbox choice, experiment tracker, and GUI stack
+    [~] Create initial risk register and mitigation plan
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
     [X] Generate project layout scaffold script for hrm-coder directory tree
@@ -61,7 +61,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement error taxonomy parser for compile, link, runtime, timeout, and policy violations
     [ ] Create malicious sample integration tests (file read, fork bomb, excessive forks, socket open)
 
-** [ ] Phase 5: Reward Shaping and Safety Gates
+** [?] Phase 5: Reward Shaping and Safety Gates
     [X] Implement reward aggregator with weighted compile/link status, tests, and coverage signals
     [X] Integrate clang-tidy/clang++ -Wall -Wextra -Werror diagnostics into normalized lint score
     [X] Incorporate compiler warning/error counts into reward diagnostics score
@@ -92,7 +92,7 @@ Save new code files in: C:\repos\hrm-coder
     [?] Create CI smoke evaluation job on sample subset with artifacts (ctest + lcov upload)
     [~] Create nightly full evaluation job with retention and tagging
     [X] Implement version stamping (git SHA, Docker digest, seeds) in runs
-    [~] Configure GitHub Pages publish for latest report artifacts
+    [X] Configure GitHub Pages publish for latest report artifacts
     [ ] Bootstrap MLflow or W\&B project with tags and run summaries
 
 ** [ ] Phase 9: AST-Edit Action Space (v2)
@@ -101,7 +101,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Define edit action space for insert, replace, and delete operations
     [?] Implement cursor policy module for region selection by HRM high-level
     [X] Implement decoder constraint checker to avoid invalid AST states
-    [ ] Add ablation job configs and comparison report against token baseline
+    [~] Add ablation job configs and comparison report against token baseline
 
 ** [ ] Phase 10: C++ Runner and Codeforces Integration (v2)
     [~] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing

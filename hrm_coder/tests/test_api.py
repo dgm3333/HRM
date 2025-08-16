@@ -3,14 +3,8 @@ import sys
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from fastapi.testclient import TestClient
-
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).resolve().parents[2]))
-from hrm_coder import app
-
+from fastapi.testclient import TestClient  # noqa: E402
+from hrm_coder import app  # noqa: E402
 
 
 def test_run_lifecycle():
@@ -34,7 +28,9 @@ def test_run_lifecycle():
     assert fetched["id"] == run["id"]
 
     # Update status
-    updated = client.patch(f"/runs/{run['id']}", json={"status": "done"}).json()
+    updated = client.patch(
+        f"/runs/{run['id']}", json={"status": "done"}
+    ).json()
     assert updated["status"] == "done"
 
     # Append a log line
@@ -42,3 +38,12 @@ def test_run_lifecycle():
     logs = client.get(f"/runs/{run['id']}").json()["logs"]
     assert "finished" in logs
 
+    # Delete run
+    art_dir = (
+        Path(__file__).resolve().parents[1] / "artifacts" / f"run_{run['id']}"
+    )
+    assert art_dir.exists()
+    deleted = client.delete(f"/runs/{run['id']}").json()
+    assert deleted["id"] == run["id"]
+    assert not art_dir.exists()
+    assert client.get("/runs").json() == []
