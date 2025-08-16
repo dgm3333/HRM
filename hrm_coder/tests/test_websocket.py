@@ -1,7 +1,6 @@
 from fastapi.testclient import TestClient
 
 from .. import app
-from ..run_registry import registry
 
 
 def test_websocket_log_stream():
@@ -11,5 +10,5 @@ def test_websocket_log_stream():
     with client.websocket_connect(f'/logs/ws/{run_id}') as ws:
         first = ws.receive_text()
         assert 'training started' in first
-        registry.append_log(run_id, 'next line')
+        client.post(f'/runs/{run_id}/logs', json={'message': 'next line'})
         assert ws.receive_text() == 'next line'

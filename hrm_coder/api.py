@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from .run_registry import registry, Run
 
@@ -77,6 +78,37 @@ def list_artifacts(run_id: int) -> Dict[str, List[str]]:
         raise HTTPException(status_code=404, detail="artifact not found")
     files = [str(p.relative_to(path)) for p in path.rglob("*") if p.is_file()]
     return {"files": files}
+
+
+class RunUpdate(BaseModel):
+    """Payload for run status updates."""
+
+    status: str | None = None
+
+
+@app.patch("/runs/{run_id}", response_model=Run)
+def update_run(run_id: int, payload: RunUpdate):
+    """Update mutable fields of a run such as status."""
+    run = registry.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    if payload.status is not None:
+        registry.update_status(run_id, payload.status)
+    return registry.get_run(run_id)
+
+
+class LogMessage(BaseModel):
+    message: str
+
+
+@app.post("/runs/{run_id}/logs")
+def post_log(run_id: int, msg: LogMessage) -> Dict[str, str]:
+    """Append a log line to a run."""
+    run = registry.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    registry.append_log(run_id, msg.message)
+    return {"status": "ok"}
 
 
 @app.websocket("/logs/ws/{run_id}")
