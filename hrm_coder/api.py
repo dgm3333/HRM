@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 from pathlib import Path
+import xml.etree.ElementTree as ET
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -78,6 +79,38 @@ def list_artifacts(run_id: int) -> Dict[str, List[str]]:
         raise HTTPException(status_code=404, detail="artifact not found")
     files = [str(p.relative_to(path)) for p in path.rglob("*") if p.is_file()]
     return {"files": files}
+
+
+@app.get("/runs/{run_id}/junit")
+def junit_summary(run_id: int) -> Dict[str, int]:
+    """Return a summary of JUnit results for a run."""
+    run = registry.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    junit_path = ARTIFACT_DIR / f"run_{run_id}" / "junit.xml"
+    if not junit_path.exists():
+        raise HTTPException(status_code=404, detail="junit not found")
+    try:
+        root = ET.parse(junit_path).getroot()
+    except ET.ParseError:
+        raise HTTPException(status_code=400, detail="invalid junit")
+
+    def _extract(node: ET.Element) -> tuple[int, int]:
+        tests = int(node.attrib.get("tests", 0))
+        failures = int(node.attrib.get("failures", 0))
+        errors = int(node.attrib.get("errors", 0))
+        return tests, failures + errors
+
+    if root.tag == "testsuites":
+        total_tests = total_failures = 0
+        for child in root.findall("testsuite"):
+            t, f = _extract(child)
+            total_tests += t
+            total_failures += f
+    else:
+        total_tests, total_failures = _extract(root)
+
+    return {"tests": total_tests, "failures": total_failures}
 
 
 class RunUpdate(BaseModel):

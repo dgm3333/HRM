@@ -8,6 +8,7 @@
   <h1>Run <span id="run_id"></span></h1>
   <div>Status: <span id="status"></span></div>
   <div>Artifact: <span id="artifact"></span></div>
+  <div id="junit"></div>
   <pre id="logs"></pre>
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -27,6 +28,15 @@
       }
     }
     loadRun();
+
+    async function loadJunit() {
+      const resp = await fetch(`/runs/${runId}/junit`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      document.getElementById('junit').textContent =
+        `Tests: ${data.tests}, Failures: ${data.failures}`;
+    }
+    loadJunit();
 
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${proto}//${location.host}/logs/ws/${runId}`);
