@@ -65,7 +65,7 @@ jobs:
       - name: Full evaluation
         id: full-eval
         run: |
-          python scripts/smoke_eval.py > full_eval.log
+          python scripts/nightly_eval.py > full_eval.log
 
       - name: Upload evaluation log
         if: ${{ steps.full-eval.outcome == 'success' }}
@@ -82,7 +82,7 @@ jobs:
           name: nightly-mlflow
           path: |
             mlruns
-            smoke_eval_summary.json
+            nightly_eval_summary.json
           retention-days: 7
 
       - name: Tag nightly run
