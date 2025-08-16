@@ -9,6 +9,7 @@
   <div>Status: <span id="status"></span></div>
   <div>Artifact: <span id="artifact"></span></div>
   <div id="junit"></div>
+  <div>Coverage: <span id="coverage"></span></div>
   <pre id="logs"></pre>
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -37,6 +38,14 @@
         `Tests: ${data.tests}, Failures: ${data.failures}`;
     }
     loadJunit();
+
+    async function loadCoverage() {
+      const resp = await fetch(`/runs/${runId}/coverage`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      document.getElementById('coverage').textContent = data.line + '%';
+    }
+    loadCoverage();
 
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${proto}//${location.host}/logs/ws/${runId}`);

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 from pathlib import Path
+import json
 import xml.etree.ElementTree as ET
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -111,6 +112,27 @@ def junit_summary(run_id: int) -> Dict[str, int]:
         total_tests, total_failures = _extract(root)
 
     return {"tests": total_tests, "failures": total_failures}
+
+
+@app.get("/runs/{run_id}/coverage")
+def coverage_summary(run_id: int) -> Dict[str, float]:
+    """Return line coverage percentage for a run."""
+    run = registry.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    cov_path = ARTIFACT_DIR / f"run_{run_id}" / "coverage.json"
+    if not cov_path.exists():
+        raise HTTPException(status_code=404, detail="coverage not found")
+    try:
+        data = json.loads(cov_path.read_text())
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="invalid coverage")
+    line_cov = data.get("line") or data.get("lines") or data.get("line_percent")
+    try:
+        line_cov = float(line_cov)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="invalid coverage")
+    return {"line": line_cov}
 
 
 class RunUpdate(BaseModel):

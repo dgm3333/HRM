@@ -41,6 +41,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement artifact static server for JUnit XML and lcov/llvm-cov HTML
     [X] Add WebSocket log streamer with tail-follow behavior
     [X] Provide GUI quickstart docs and sample configs
+    [X] Expose coverage summary endpoint and display on run page
 
 ** [ ] Phase 3: Deterministic Dataset Pipeline (C++)
     [~] Implement HumanEval-CPP builder with harness generator and reference solutions
