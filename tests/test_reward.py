@@ -373,3 +373,58 @@ def test_drift_check_detects_mean_shift(caplog):
     assert any(
         "outside expected range" in r.message for r in caplog.records
     )
+
+
+def test_compute_from_dir(tmp_path):
+    agg = RewardAggregator(
+        weights={
+            'compile': 0.1,
+            'tests': 0.3,
+            'coverage': 0.2,
+            'coverage_delta': 0.2,
+            'lint': 0.1,
+            'static': 0.1,
+        },
+        max_edit_penalty=0.0,
+        max_time_penalty=0.0,
+        max_memory_penalty=0.0,
+    )
+
+    (tmp_path / 'junit.xml').write_text(
+        '<testsuite tests="2" failures="0"></testsuite>'
+    )
+    (tmp_path / 'coverage.json').write_text('{"line": 0.5}')
+    (tmp_path / 'clang_tidy.log').write_text(
+        'a.cpp:1:1: warning: thing [misc]'
+    )
+    (tmp_path / 'cppcheck.log').write_text('[warning] x')
+    (tmp_path / 'compile.stdout').write_text('a.cpp:1:1: warning: w')
+    (tmp_path / 'compile.stderr').write_text('')
+    (tmp_path / 'sanitizer.log').write_text('')
+
+    meta = {
+        'compile_success': True,
+        'edit_cost': 0.0,
+        'time_used': 0.0,
+        'memory_used': 0.0,
+        'prev_coverage': 0.3,
+    }
+
+    r_dir = agg.compute_from_dir(tmp_path, meta=meta)
+    r_manual = agg.compute_from_outputs(
+        compile_success=True,
+        tests_passed=2,
+        tests_total=2,
+        coverage=0.5,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        clang_output='a.cpp:1:1: warning: thing [misc]',
+        cppcheck_output='[warning] x',
+        compiler_stdout='a.cpp:1:1: warning: w',
+        compiler_stderr='',
+        sanitizer_output='',
+        prev_coverage=0.3,
+    )
+
+    assert abs(r_dir - r_manual) < 1e-6

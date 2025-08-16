@@ -61,7 +61,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement error taxonomy parser for compile, link, runtime, timeout, and policy violations
     [ ] Create malicious sample integration tests (file read, fork bomb, excessive forks, socket open)
 
-** [ ] Phase 5: Reward Shaping and Safety Gates
+** [?] Phase 5: Reward Shaping and Safety Gates
     [X] Implement reward aggregator with weighted compile/link status, tests, and coverage signals
     [X] Integrate clang-tidy/clang++ -Wall -Wextra -Werror diagnostics into normalized lint score
     [X] Incorporate compiler warning/error counts into reward diagnostics score
