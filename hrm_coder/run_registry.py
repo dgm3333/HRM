@@ -59,7 +59,8 @@ class RunRegistry:
             self._log_queues[run_id].put_nowait(message)
 
     def get_logs(self, run_id: int) -> List[str]:
-        return self._runs.get(run_id, Run(id=run_id)).logs
+        run = self._runs.get(run_id)
+        return run.logs if run is not None else []
 
     def get_log_queue(self, run_id: int) -> "asyncio.Queue[str]":
         return self._log_queues.setdefault(run_id, asyncio.Queue())
