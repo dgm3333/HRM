@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import re
 import subprocess
 import sys
@@ -14,6 +15,7 @@ from runners.cpp_runner import (  # noqa: E402
     compile_static_library,
     run_binary,
     run_codeforces_tests,
+    run_codeforces_task,
 )
 from runners.sandbox_cache import SandboxCache  # noqa: E402
 
@@ -332,3 +334,25 @@ int main(){int x; if(!(std::cin>>x)) return 0; std::cout<<times_two(x);}
         [main], tests_dir, shared_libs={"double": [lib_src]}
     )
     assert res["results"][0]["passed"]
+
+
+def test_run_codeforces_task_meta(tmp_path: Path) -> None:
+    """Read TL/ML from meta.json when executing a task directory."""
+    src = tmp_path / "main.cpp"
+    src.write_text(
+        """
+#include <thread>
+#include <chrono>
+int main(){std::this_thread::sleep_for(std::chrono::milliseconds(100));}
+"""
+    )
+    task_dir = tmp_path / "task"
+    tests_dir = task_dir / "tests"
+    tests_dir.mkdir(parents=True)
+    (tests_dir / "a.in").write_text("\n")
+    (tests_dir / "a.out").write_text("")
+    meta = {"time_limit_ms": 50}
+    (task_dir / "meta.json").write_text(json.dumps(meta))
+
+    res = run_codeforces_task([src], task_dir, sanitize=False)
+    assert res["results"][0]["error_type"] == "timeout"

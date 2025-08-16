@@ -11,6 +11,7 @@ counts, advancing the Phase 10 goal of richer feedback from the build step.
 from __future__ import annotations
 
 import os
+import json
 import resource
 import shutil
 import subprocess
@@ -655,3 +656,38 @@ def run_codeforces_tests(
         if cache is not None and key is not None:
             cache.store(key, data)
         return data
+
+
+def run_codeforces_task(
+    sources: Sequence[Path],
+    task_dir: Path,
+    **kwargs,
+) -> dict:
+    """Compile ``sources`` and run them against a Codeforces task directory.
+
+    The ``task_dir`` is expected to contain a ``tests`` subdirectory with
+    ``*.in``/``*.out`` pairs and a ``meta.json`` file providing time and memory
+    limits.  The limits are forwarded to :func:`run_codeforces_tests` unless
+    explicitly overridden via ``kwargs``.
+    """
+
+    meta_path = task_dir / "meta.json"
+    timeout = None
+    memory_limit = None
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text())
+            timeout = meta.get("time_limit_ms", 2000) / 1000.0
+            memory_limit = meta.get("memory_limit_kb", 256_000) * 1024
+        except Exception:
+            timeout = None
+            memory_limit = None
+
+    params = dict(kwargs)
+    if timeout is not None:
+        params.setdefault("timeout", timeout)
+    if memory_limit is not None:
+        params.setdefault("memory_limit", memory_limit)
+
+    tests_dir = task_dir / "tests"
+    return run_codeforces_tests(sources, tests_dir, **params)
