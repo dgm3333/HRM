@@ -11,8 +11,8 @@ Save new code files in: C:\repos\hrm-coder
 
 # Progress Checklist
 
-** [ ] Phase 0: Discovery & Reuse Audit
-    [ ] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
+** [~] Phase 0: Discovery & Reuse Audit
+    [~] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
     [ ] Setup project operation within isolate/gVisor runner images
     [ ] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
     [ ] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes
