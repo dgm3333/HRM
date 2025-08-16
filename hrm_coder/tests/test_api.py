@@ -29,3 +29,7 @@ def test_run_lifecycle():
     assert len(runs) == 1
     assert runs[0]["id"] == run["id"]
 
+    # Fetch single run
+    fetched = client.get(f"/runs/{run['id']}").json()
+    assert fetched["id"] == run["id"]
+

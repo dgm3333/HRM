@@ -24,7 +24,7 @@
       tbody.innerHTML = '';
       for (const r of runs) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.id}</td><td>${r.status}</td><td>${r.artifact ? `<a href="${r.artifact}">link</a>` : ''}</td>`;
+        tr.innerHTML = `<td><a href="run.html?id=${r.id}">${r.id}</a></td><td>${r.status}</td><td>${r.artifact ? `<a href="${r.artifact}">link</a>` : ''}</td>`;
         tbody.appendChild(tr);
       }
     }
