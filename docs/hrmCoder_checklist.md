@@ -70,7 +70,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Integrate REINFORCE with value baseline and entropy regularization
     [X] Implement curriculum toggles for visible versus hidden tests
     [X] Add checkpointing, resume logic, and deterministic dataloaders
-    [~] Create 5-task smoke run pipeline for CI runtime budgets
+    [?] Create 5-task smoke run pipeline for CI runtime budgets
 
 ** [ ] Phase 7: Evaluation Harness and Reporting
     [X] Implement pass\@k computation with fixed seeds and sampling policies
