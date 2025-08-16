@@ -1,0 +1,4 @@
+# Example configuration for HRM Coder runs
+model: small
+learning_rate: 1e-3
+dataset: humaneval-cpp
