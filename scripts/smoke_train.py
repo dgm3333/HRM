@@ -4,8 +4,13 @@
 This script exercises the HRMTrainer's supervised fine-tuning **and**
 reinforcement-learning paths on a small synthetic dataset.  It is
 intended for CI smoke tests and runs in under a second on CPU.
+
+The script now pins the environment for deterministic behaviour and
+allows overriding the random seed via a command-line flag.  This helps
+establish a reproducible 5-task smoke pipeline for Phase 6.
 """
 
+import argparse
 import pathlib
 import sys
 
@@ -17,6 +22,7 @@ from torch.utils.data import DataLoader, TensorDataset
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 from hrm.training_loop import HRMTrainer, HRMTrainingConfig  # noqa: E402
+from hrm_coder.env import pin_environment  # noqa: E402
 
 
 class TinyModel(nn.Module):
@@ -33,8 +39,14 @@ class TinyModel(nn.Module):
         return logits, value
 
 
-def main() -> None:
-    torch.manual_seed(0)
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=0, help="PRNG seed")
+    args = parser.parse_args(argv)
+
+    pin_environment(args.seed)
+
+    torch.manual_seed(args.seed)
     vocab = 8
     inputs = torch.eye(vocab)[:5]
     targets = torch.arange(5) % vocab
