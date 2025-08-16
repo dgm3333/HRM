@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 import logging
 
+from .diagnostics import clang_tidy_score, cppcheck_score, coverage_delta
+
 
 @dataclass
 class RewardAggregator:
@@ -61,13 +63,17 @@ class RewardAggregator:
         compile_score = 1.0 if compile_success else 0.0
         test_score = tests_passed / tests_total if tests_total else 0.0
         coverage_score = max(0.0, min(coverage, 1.0))
-        prev_cov = max(0.0, min(prev_coverage, 1.0)) if prev_coverage is not None else None
-        coverage_delta = max(0.0, coverage_score - prev_cov) if prev_cov is not None else 0.0
+        prev_cov = (
+            max(0.0, min(prev_coverage, 1.0))
+            if prev_coverage is not None
+            else None
+        )
+        cov_delta = coverage_delta(prev_cov, coverage_score) if prev_cov is not None else 0.0
 
         reward += self.weights.get("compile", 0.0) * compile_score
         reward += self.weights.get("tests", 0.0) * test_score
         reward += self.weights.get("coverage", 0.0) * coverage_score
-        reward += self.weights.get("coverage_delta", 0.0) * coverage_delta
+        reward += self.weights.get("coverage_delta", 0.0) * cov_delta
         reward += self.weights.get("lint", 0.0) * max(0.0, min(lint_score, 1.0))
         reward += self.weights.get("static", 0.0) * max(0.0, min(static_score, 1.0))
 
@@ -85,6 +91,44 @@ class RewardAggregator:
         # Record history for histogram logging
         self.history.append(reward)
         return reward
+
+    def compute_from_outputs(
+        self,
+        compile_success: bool,
+        tests_passed: int,
+        tests_total: int,
+        coverage: float,
+        edit_cost: float,
+        time_used: float,
+        memory_used: float,
+        clang_output: str = "",
+        cppcheck_output: str = "",
+        prev_coverage: float | None = None,
+        time_limit: float | None = None,
+        memory_limit: float | None = None,
+    ) -> float:
+        """Compute reward using raw diagnostics output strings.
+
+        Convenience wrapper that parses ``clang_output`` and ``cppcheck_output``
+        into normalized scores before delegating to :meth:`compute`.
+        """
+
+        lint = clang_tidy_score(clang_output)
+        static = cppcheck_score(cppcheck_output)
+        return self.compute(
+            compile_success=compile_success,
+            tests_passed=tests_passed,
+            tests_total=tests_total,
+            coverage=coverage,
+            edit_cost=edit_cost,
+            time_used=time_used,
+            memory_used=memory_used,
+            lint_score=lint,
+            static_score=static,
+            prev_coverage=prev_coverage,
+            time_limit=time_limit,
+            memory_limit=memory_limit,
+        )
 
     def histogram(self, bins: int = 10) -> List[int]:
         """Return a simple histogram of historical rewards."""
@@ -109,4 +153,3 @@ class RewardAggregator:
         if any(r < -1.0 or r > 1.0 for r in self.history):
             logger.warning("reward out of expected [-1,1] range")
         logger.debug("reward histogram: %s", hist)
-        

@@ -4,6 +4,7 @@ import sys
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 from utils.reward import RewardAggregator
+from utils.diagnostics import clang_tidy_score, cppcheck_score
 
 
 def test_reward_aggregator_basic():
@@ -73,3 +74,50 @@ def test_reward_with_lint_static_and_coverage_delta():
     )
 
     assert abs(r - 0.615) < 1e-6
+
+
+def test_compute_from_outputs_matches_manual_scores():
+    agg = RewardAggregator(
+        weights={
+            'compile': 0.1,
+            'tests': 0.3,
+            'coverage': 0.2,
+            'coverage_delta': 0.2,
+            'lint': 0.1,
+            'static': 0.1,
+        },
+        max_edit_penalty=0.0,
+        max_time_penalty=0.0,
+        max_memory_penalty=0.0,
+    )
+
+    clang_output = "foo.cpp:1:1: warning: thing [misc]"
+    cppcheck_output = "[warning] variable unused"
+
+    r1 = agg.compute_from_outputs(
+        compile_success=True,
+        tests_passed=2,
+        tests_total=4,
+        coverage=0.5,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        clang_output=clang_output,
+        cppcheck_output=cppcheck_output,
+        prev_coverage=0.3,
+    )
+
+    r2 = agg.compute(
+        compile_success=True,
+        tests_passed=2,
+        tests_total=4,
+        coverage=0.5,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        lint_score=clang_tidy_score(clang_output),
+        static_score=cppcheck_score(cppcheck_output),
+        prev_coverage=0.3,
+    )
+
+    assert abs(r1 - r2) < 1e-6
