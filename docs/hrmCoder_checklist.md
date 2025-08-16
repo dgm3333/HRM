@@ -89,11 +89,11 @@ Save new code files in: C:\repos\hrm-coder
     [ ] Bootstrap MLflow or W\&B project with tags and run summaries
 
 ** [ ] Phase 9: AST-Edit Action Space (v2)
-    [ ] Integrate Tree-sitter C++ grammar and bindings
+    [~] Integrate Tree-sitter C++ grammar and bindings
     [ ] Implement node type schema and AST embedding encoder for C++
-    [ ] Define edit action space for insert, replace, and delete operations
+    [~] Define edit action space for insert, replace, and delete operations
     [ ] Implement cursor policy module for region selection by HRM high-level
-    [ ] Implement decoder constraint checker to avoid invalid AST states
+    [~] Implement decoder constraint checker to avoid invalid AST states
     [ ] Add ablation job configs and comparison report against token baseline
 
 ** [ ] Phase 10: C++ Runner and Codeforces Integration (v2)
