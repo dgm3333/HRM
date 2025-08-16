@@ -1,3 +1,5 @@
 compiler: g++
 sandbox: nsjail
 timeout: 5
+memory_limit: 256
+cpus: 1

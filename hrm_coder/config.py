@@ -43,6 +43,8 @@ class RunnerConfig:
     compiler: str = "g++"
     sandbox: str = "nsjail"
     timeout: int = 5
+    memory_limit: int = 256  # in megabytes
+    cpus: int = 1
 
 
 @dataclass
