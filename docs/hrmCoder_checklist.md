@@ -60,6 +60,7 @@ Save new code files in: C:\repos\hrm-coder
 ** [ ] Phase 5: Reward Shaping and Safety Gates
     [X] Implement reward aggregator with weighted compile/link status, tests, and coverage signals
     [X] Integrate clang-tidy/clang++ -Wall -Wextra -Werror diagnostics into normalized lint score
+    [X] Incorporate compiler warning/error counts into reward diagnostics score
     [X] Integrate static analysis (cppcheck) scoring and normalization
     [X] Implement coverage delta computation using gcov/lcov or llvm-cov
     [X] Implement edit-cost, time, and memory penalty functions with clamps

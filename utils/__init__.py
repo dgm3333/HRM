@@ -6,6 +6,7 @@ from .diagnostics import (  # noqa: F401
     clang_tidy_score,
     cppcheck_score,
     compiler_diagnostics,
+    diagnostics_score,
     coverage_delta,
 )
 

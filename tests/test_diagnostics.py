@@ -8,6 +8,7 @@ from utils.diagnostics import (
     cppcheck_score,
     coverage_delta,
     compiler_diagnostics,
+    diagnostics_score,
 )
 
 
@@ -33,3 +34,8 @@ def test_compiler_diagnostics():
     warnings, errors = compiler_diagnostics(stdout, stderr)
     assert warnings == 1
     assert errors == 1
+
+
+def test_diagnostics_score():
+    assert diagnostics_score(0, 0) == 1.0
+    assert diagnostics_score(2, 1) == 0.7

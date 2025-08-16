@@ -36,6 +36,17 @@ def compiler_diagnostics(stdout: str, stderr: str) -> tuple[int, int]:
     return warnings, errors
 
 
+def diagnostics_score(warnings: int, errors: int) -> float:
+    """Return a normalized score from warning and error counts.
+
+    Each compiler warning reduces the score by ``0.05`` and each error by
+    ``0.2``.  The result is clipped to the ``[0, 1]`` interval.
+    """
+
+    penalty = 0.05 * warnings + 0.2 * errors
+    return max(0.0, 1.0 - penalty)
+
+
 def sanitizer_clean(output: str) -> bool:
     """Return True when no sanitizer issues are detected.
 

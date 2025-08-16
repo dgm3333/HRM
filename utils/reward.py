@@ -5,7 +5,9 @@ import logging
 from .diagnostics import (
     clang_tidy_score,
     cppcheck_score,
+    compiler_diagnostics,
     coverage_delta,
+    diagnostics_score,
     sanitizer_clean,
 )
 
@@ -45,6 +47,8 @@ class RewardAggregator:
         memory_used: float,
         lint_score: float = 1.0,
         static_score: float = 1.0,
+        warnings: int = 0,
+        errors: int = 0,
         sanitizer_clean: bool | None = None,
         prev_coverage: float | None = None,
         time_limit: float | None = None,
@@ -65,6 +69,8 @@ class RewardAggregator:
         lint_score: normalized score from clang-tidy/clang diagnostics.
         static_score: normalized score from static analysis tools
             (e.g. cppcheck).
+        warnings: count of compiler warnings.
+        errors: count of compiler errors.
         sanitizer_clean: whether Address/UndefinedBehavior sanitizers reported
             no issues. ``None`` skips this signal.
         prev_coverage: previous coverage value used to compute coverage delta.
@@ -78,6 +84,7 @@ class RewardAggregator:
         if compile_success:
             test_score = tests_passed / tests_total if tests_total else 0.0
             coverage_score = max(0.0, min(coverage, 1.0))
+            diag_score = diagnostics_score(warnings, errors)
             prev_cov = (
                 max(0.0, min(prev_coverage, 1.0))
                 if prev_coverage is not None
@@ -92,11 +99,13 @@ class RewardAggregator:
             test_score = 0.0
             coverage_score = 0.0
             cov_delta = 0.0
+            diag_score = 0.0
 
         reward += self.weights.get("compile", 0.0) * compile_score
         reward += self.weights.get("tests", 0.0) * test_score
         reward += self.weights.get("coverage", 0.0) * coverage_score
         reward += self.weights.get("coverage_delta", 0.0) * cov_delta
+        reward += self.weights.get("diagnostics", 0.0) * diag_score
         reward += self.weights.get("lint", 0.0) * max(
             0.0, min(lint_score, 1.0)
         )
@@ -138,6 +147,8 @@ class RewardAggregator:
         time_used: float,
         memory_used: float,
         clang_output: str = "",
+        compiler_stdout: str = "",
+        compiler_stderr: str = "",
         cppcheck_output: str = "",
         sanitizer_output: str | None = None,
         prev_coverage: float | None = None,
@@ -153,7 +164,11 @@ class RewardAggregator:
         Parameters
         ----------
         clang_output:
-            Raw stderr/stdout from clang-tidy/clang++.
+            Raw stderr/stdout from clang-tidy.
+        compiler_stdout:
+            Stdout from the compiler invocation.
+        compiler_stderr:
+            Stderr from the compiler invocation.
         cppcheck_output:
             Raw output from cppcheck.
         sanitizer_output:
@@ -168,6 +183,7 @@ class RewardAggregator:
         """
 
         lint = clang_tidy_score(clang_output)
+        warnings, errors = compiler_diagnostics(compiler_stdout, compiler_stderr)
         static = cppcheck_score(cppcheck_output)
         san = (
             sanitizer_clean(sanitizer_output)
@@ -184,6 +200,8 @@ class RewardAggregator:
             memory_used=memory_used,
             lint_score=lint,
             static_score=static,
+            warnings=warnings,
+            errors=errors,
             sanitizer_clean=san,
             prev_coverage=prev_coverage,
             time_limit=time_limit,
