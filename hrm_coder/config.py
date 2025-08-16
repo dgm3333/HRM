@@ -8,7 +8,7 @@ from typing import Sequence
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
-from runners import sandbox_detector
+from runners import sandbox_detector, toolchain_detector
 
 
 @dataclass
@@ -45,6 +45,10 @@ class RunnerConfig:
     first available backend from :mod:`runners.sandbox_detector` in the
     order ``isolate`` → ``nsjail`` → ``runsc``. When no sandbox is
     detected the value ``"none"`` is used.
+
+    ``compiler`` likewise accepts ``"auto"`` to pick the first available
+    C++ compiler from :mod:`runners.toolchain_detector` in the order
+    ``g++`` → ``clang++``.
     """
 
     compiler: str = "g++"
@@ -108,6 +112,9 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
     if runner_cfg.sandbox == "auto":
         selected, _ = sandbox_detector.select_sandbox()
         runner_cfg.sandbox = selected or "none"
+    if runner_cfg.compiler == "auto":
+        comp, _ = toolchain_detector.select_compiler()
+        runner_cfg.compiler = comp or "g++"
 
     return AppConfig(
         model=ModelConfig(**cfg_dict["model"]),

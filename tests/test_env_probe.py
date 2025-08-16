@@ -20,3 +20,4 @@ def test_env_probe_outputs_json(tmp_path):
     assert "toolchains" in data
     assert "python" in data
     assert "default_sandbox" in data
+    assert "default_compiler" in data
