@@ -1,4 +1,3 @@
-
 import os
 import sys
 
@@ -34,3 +33,38 @@ def test_build_command_with_env():
     assert "--env" in cmd
     env_idx = cmd.index("--env")
     assert cmd[env_idx + 1] == "LD_LIBRARY_PATH=/libs"
+
+
+def test_build_command_with_workdir_and_readonly_dirs(tmp_path):
+    runner = NSJailRunner(nsjail_path="nsjail")
+    cmd = runner.build_command(
+        ["/bin/echo", "hi"],
+        workdir="/work",
+        readonly_dirs=["/data"],
+    )
+    assert "--cwd" in cmd
+    assert "--bindmount" in cmd
+    assert "--bindmount_ro" in cmd
+
+
+def test_run_enforces_output_limits(tmp_path):
+    fake = tmp_path / "nsjail"
+    fake.write_text(
+        """#!/usr/bin/env python3
+import sys, subprocess
+args = sys.argv[1:]
+idx = args.index('--')
+cmd = args[idx + 1:]
+res = subprocess.run(cmd)
+sys.exit(res.returncode)
+"""
+    )
+    fake.chmod(0o755)
+    runner = NSJailRunner(nsjail_path=str(fake))
+    proc = runner.run(
+        ["/bin/sh", "-c", "printf 'abcdef' && printf 'ghij' >&2"],
+        stdout_limit=3,
+        stderr_limit=2,
+    )
+    assert proc.stdout == "abc"
+    assert proc.stderr == "gh"
