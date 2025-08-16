@@ -11,8 +11,9 @@ high-level plan laid out in the documentation.
 from dataclasses import dataclass
 import json
 import math
+import argparse
 from pathlib import Path
-from typing import Dict, Sequence, Iterable, List, Optional
+from typing import Dict, Sequence, List, Optional
 
 
 @dataclass
@@ -47,7 +48,9 @@ class TaskEvaluation:
         return 1.0 - math.prod((n - c - i) / (n - i) for i in range(k))
 
 
-def aggregate_pass_at_k(results: Dict[str, Sequence[bool]], ks: Sequence[int]) -> Dict[int, float]:
+def aggregate_pass_at_k(
+    results: Dict[str, Sequence[bool]], ks: Sequence[int]
+) -> Dict[int, float]:
     """Aggregate pass@k across a set of tasks.
 
     Parameters
@@ -87,7 +90,10 @@ def check_determinism(runs: Sequence[Dict[str, bool]]) -> Dict[str, bool]:
 def flaky_tasks(runs: Sequence[Dict[str, bool]]) -> List[str]:
     """Return identifiers of tasks with inconsistent outcomes."""
 
-    return [task for task, deterministic in check_determinism(runs).items() if not deterministic]
+    return [
+        task for task, deterministic in check_determinism(runs).items()
+        if not deterministic
+    ]
 
 
 def markdown_report(metrics: Dict[int, float], flaky: Sequence[str]) -> str:
@@ -108,9 +114,14 @@ def markdown_report(metrics: Dict[int, float], flaky: Sequence[str]) -> str:
 def html_report(metrics: Dict[int, float], flaky: Sequence[str]) -> str:
     """Generate a minimal HTML report for the evaluation metrics."""
 
-    rows = "".join(f"<tr><td>{k}</td><td>{value:.3f}</td></tr>" for k, value in sorted(metrics.items()))
+    rows = "".join(
+        f"<tr><td>{k}</td><td>{value:.3f}</td></tr>"
+        for k, value in sorted(metrics.items())
+    )
     if flaky:
-        flaky_html = "<ul>" + "".join(f"<li>{task}</li>" for task in flaky) + "</ul>"
+        flaky_html = "<ul>" + "".join(
+            f"<li>{task}</li>" for task in flaky
+        ) + "</ul>"
     else:
         flaky_html = "<p>No flaky tasks detected.</p>"
     return (
@@ -166,12 +177,18 @@ def comparison_markdown_report(
         "| metric | baseline | current | delta |",
         "|---|---|---|---|",
     ]
+
     def fmt(val: Optional[float]) -> str:
         return f"{val:.3f}" if isinstance(val, float) else str(val)
 
     for metric, vals in comparison.items():
         lines.append(
-            f"| {metric} | {fmt(vals['baseline'])} | {fmt(vals['current'])} | {fmt(vals['delta'])} |"
+            "| {m} | {b} | {c} | {d} |".format(
+                m=metric,
+                b=fmt(vals['baseline']),
+                c=fmt(vals['current']),
+                d=fmt(vals['delta']),
+            )
         )
     return "\n".join(lines)
 
@@ -185,13 +202,117 @@ def comparison_html_report(
         return f"{val:.3f}" if isinstance(val, float) else str(val)
 
     rows = "".join(
-        f"<tr><td>{metric}</td><td>{fmt(vals['baseline'])}</td><td>{fmt(vals['current'])}</td>"
-        f"<td>{fmt(vals['delta'])}</td></tr>"
+        (
+            f"<tr><td>{metric}</td><td>{fmt(vals['baseline'])}</td>"
+            f"<td>{fmt(vals['current'])}</td>"
+            f"<td>{fmt(vals['delta'])}</td></tr>"
+        )
         for metric, vals in comparison.items()
     )
     return (
         "<h1>Baseline Comparison</h1>"
-        "<table><tr><th>metric</th><th>baseline</th><th>current</th><th>delta</th></tr>"
+        "<table><tr><th>metric</th><th>baseline</th>"
+        "<th>current</th><th>delta</th></tr>"
         f"{rows}</table>"
     )
 
+
+def generate_reports(
+    results_path: str,
+    output_dir: str,
+    ks: Sequence[int] = (1, 10),
+    run_paths: Sequence[str] | None = None,
+    baseline_path: str | None = None,
+) -> Dict[int, float]:
+    """Compute metrics and emit Markdown/HTML reports.
+
+    Parameters
+    ----------
+    results_path:
+        JSON file mapping task id → list[bool] of attempt outcomes.
+    output_dir:
+        Directory where reports will be written.
+    ks:
+        Values of ``k`` for which ``pass@k`` will be computed.
+    run_paths:
+        Optional JSON files mapping task id → bool, used for flakiness
+        detection across independent runs.
+    baseline_path:
+        Optional path to a JSON file containing baseline metrics for
+        comparison.  Baseline keys should be of the form ``"pass@k"``.
+
+    Returns
+    -------
+    Dict[int, float]
+        The aggregated ``pass@k`` metrics.
+    """
+
+    results = json.loads(Path(results_path).read_text())
+    metrics = aggregate_pass_at_k(results, ks)
+
+    runs = (
+        [json.loads(Path(p).read_text()) for p in run_paths]
+        if run_paths
+        else []
+    )
+    flaky = flaky_tasks(runs) if runs else []
+
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "report.md").write_text(markdown_report(metrics, flaky))
+    (out_dir / "report.html").write_text(html_report(metrics, flaky))
+
+    if baseline_path is not None:
+        named_metrics = {f"pass@{k}": v for k, v in metrics.items()}
+        comparison = compare_to_baseline(named_metrics, baseline_path)
+        (out_dir / "baseline.md").write_text(
+            comparison_markdown_report(comparison)
+        )
+        (out_dir / "baseline.html").write_text(
+            comparison_html_report(comparison)
+        )
+
+    return metrics
+
+
+def main() -> None:  # pragma: no cover - CLI entry point
+    parser = argparse.ArgumentParser(description="Generate evaluation reports")
+    parser.add_argument(
+        "results",
+        help="JSON file with task → [bool] attempts",
+    )
+    parser.add_argument(
+        "output",
+        help="Directory for generated reports",
+    )
+    parser.add_argument(
+        "--k",
+        dest="ks",
+        type=int,
+        nargs="*",
+        default=[1, 10],
+        help="k values for pass@k",
+    )
+    parser.add_argument(
+        "--runs",
+        nargs="*",
+        default=None,
+        help="JSON files of individual run outcomes for flakiness detection",
+    )
+    parser.add_argument(
+        "--baseline",
+        default=None,
+        help="JSON file with baseline metrics for comparison",
+    )
+    args = parser.parse_args()
+    generate_reports(
+        results_path=args.results,
+        output_dir=args.output,
+        ks=args.ks,
+        run_paths=args.runs,
+        baseline_path=args.baseline,
+    )
+
+
+if __name__ == "__main__":  # pragma: no cover - CLI entry point
+    main()
