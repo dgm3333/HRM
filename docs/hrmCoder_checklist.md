@@ -66,11 +66,11 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [~] Phase 6: HRM Training Loop Integration
     [X] Implement CodeEncoder interface and tokenizer utilities for C++ syntax
-    [ ] Add optional SFT training path on canonical C++ solutions
-    [~] Integrate REINFORCE with value baseline and entropy regularization
-    [~] Implement curriculum toggles for visible versus hidden tests
+    [X] Add optional SFT training path on canonical C++ solutions
+    [X] Integrate REINFORCE with value baseline and entropy regularization
+    [X] Implement curriculum toggles for visible versus hidden tests
     [X] Add checkpointing, resume logic, and deterministic dataloaders
-    [ ] Create 5-task smoke run pipeline for CI runtime budgets
+    [~] Create 5-task smoke run pipeline for CI runtime budgets
 
 ** [ ] Phase 7: Evaluation Harness and Reporting
     [X] Implement pass\@k computation with fixed seeds and sampling policies
