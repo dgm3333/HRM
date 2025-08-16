@@ -9,6 +9,8 @@ def test_load_config_defaults():
     assert cfg.runner.timeout == 5
     assert cfg.acceptance.pass_at_1 == 0.5
     assert cfg.acceptance.max_timeout_rate == 0.05
+    assert cfg.training.baseline_coef == 0.5
+    assert cfg.training.curriculum_stage == "visible"
 
 
 def test_load_config_override():
@@ -16,7 +18,11 @@ def test_load_config_override():
         "model.learning_rate=0.01",
         "runner.timeout=10",
         "acceptance.pass_at_1=0.9",
+        "training.baseline_coef=0.7",
+        "training.curriculum_stage=hidden",
     ])
     assert cfg.model.learning_rate == 0.01
     assert cfg.runner.timeout == 10
     assert cfg.acceptance.pass_at_1 == 0.9
+    assert cfg.training.baseline_coef == 0.7
+    assert cfg.training.curriculum_stage == "hidden"

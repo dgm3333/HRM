@@ -51,12 +51,22 @@ class AcceptanceConfig:
 
 
 @dataclass
+class TrainingConfig:
+    """Configuration for the training loop (Phase 6)."""
+
+    baseline_coef: float = 0.5
+    entropy_coef: float = 1e-4
+    curriculum_stage: str = "visible"
+
+
+@dataclass
 class AppConfig:
     """Top-level application configuration."""
     model: ModelConfig = field(default_factory=ModelConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     runner: RunnerConfig = field(default_factory=RunnerConfig)
     acceptance: AcceptanceConfig = field(default_factory=AcceptanceConfig)
+    training: TrainingConfig = field(default_factory=TrainingConfig)
 
 
 def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
@@ -79,6 +89,7 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
         dataset=DatasetConfig(**cfg_dict["dataset"]),
         runner=RunnerConfig(**cfg_dict["runner"]),
         acceptance=AcceptanceConfig(**cfg_dict["acceptance"]),
+        training=TrainingConfig(**cfg_dict["training"]),
     )
 
 
@@ -88,5 +99,6 @@ __all__ = [
     "ModelConfig",
     "RunnerConfig",
     "AcceptanceConfig",
+    "TrainingConfig",
     "load_config",
 ]
