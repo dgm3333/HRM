@@ -2,7 +2,6 @@ import json
 import pytest
 
 from hrm_coder.evaluation import (
-    TaskEvaluation,
     aggregate_pass_at_k,
     check_determinism,
     flaky_tasks,
@@ -11,7 +10,9 @@ from hrm_coder.evaluation import (
     compare_to_baseline,
     comparison_markdown_report,
     comparison_html_report,
+    generate_reports,
 )
+
 
 def test_pass_at_k_and_aggregate():
     results = {
@@ -24,6 +25,7 @@ def test_pass_at_k_and_aggregate():
     assert metrics[1] == pytest.approx((1/3 + 0) / 2)
     assert metrics[2] == pytest.approx((2/3 + 0) / 2)
 
+
 def test_determinism_and_flaky_detection():
     runs = [
         {'t1': True, 't2': False},
@@ -32,6 +34,7 @@ def test_determinism_and_flaky_detection():
     determinism = check_determinism(runs)
     assert determinism == {'t1': True, 't2': False}
     assert flaky_tasks(runs) == ['t2']
+
 
 def test_report_generation():
     metrics = {1: 0.5}
@@ -59,3 +62,32 @@ def test_baseline_comparison(tmp_path):
 
     report_html = comparison_html_report(comparison)
     assert "<td>0.600</td>" in report_html
+
+
+def test_generate_reports(tmp_path):
+    results = {"t1": [True, False], "t2": [False, False]}
+    results_file = tmp_path / "results.json"
+    results_file.write_text(json.dumps(results))
+
+    run1_file = tmp_path / "run1.json"
+    run2_file = tmp_path / "run2.json"
+    run1_file.write_text(json.dumps({"t1": True, "t2": False}))
+    run2_file.write_text(json.dumps({"t1": True, "t2": True}))
+
+    baseline_file = tmp_path / "baseline.json"
+    baseline_file.write_text(json.dumps({"pass@1": 0.0, "pass@2": 0.0}))
+
+    metrics = generate_reports(
+        results_path=str(results_file),
+        output_dir=str(tmp_path),
+        ks=[1, 2],
+        run_paths=[str(run1_file), str(run2_file)],
+        baseline_path=str(baseline_file),
+    )
+
+    assert metrics[1] == pytest.approx(0.25)
+    report_md = (tmp_path / "report.md").read_text()
+    assert "Flaky Tasks" in report_md and "t2" in report_md
+    assert (tmp_path / "report.html").exists()
+    assert (tmp_path / "baseline.md").exists()
+    assert (tmp_path / "baseline.html").exists()
