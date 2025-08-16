@@ -43,7 +43,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Implement HumanEval-CPP builder with harness generator and reference solutions
     [ ] Implement Codeforces-Intro builder (I/O testcases, constraints, per-problem time limits)
     [ ] Implement AtCoder ABC subset builder with normalized input/output cases
-    [ ] Write determinism validator to re-run and hash equality of artifacts
+    [X] Write determinism validator to re-run and hash equality of artifacts
     [ ] Integrate DVC pipelines and data/versions.yml locking
     [ ] Add dataset schema contracts and unit tests for loaders
     [~] Implement dataset split manager for train/val/test with fixed seeds
