@@ -307,3 +307,28 @@ if(x>0) std::cout<<1; else std::cout<<0;}
     assert "coverage" in res
     assert 0.0 <= res["coverage"] <= 1.0
     assert res["coverage"] < 1.0
+
+
+def test_run_codeforces_tests_shared_libs(tmp_path: Path) -> None:
+    """Build a shared library and link it via run_codeforces_tests."""
+    lib_src = tmp_path / "double.cpp"
+    lib_src.write_text('extern "C" int times_two(int x){return 2*x;}\n')
+
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include <iostream>
+extern "C" int times_two(int);
+int main(){int x; if(!(std::cin>>x)) return 0; std::cout<<times_two(x);}
+"""
+    )
+
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("7\n")
+    (tests_dir / "a.out").write_text("14\n")
+
+    res = run_codeforces_tests(
+        [main], tests_dir, shared_libs={"double": [lib_src]}
+    )
+    assert res["results"][0]["passed"]

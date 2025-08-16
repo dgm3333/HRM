@@ -239,7 +239,11 @@ def compile_static_library(
             cmd = ["ccache", compiler]
         cmd += [str(src), "-c", "-o", str(obj_path)] + list(flags)
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         stdout_parts.append(proc.stdout)
         stderr_parts.append(proc.stderr)
@@ -259,7 +263,11 @@ def compile_static_library(
 
     ar_cmd = ["ar", "rcs", str(output_path)] + [str(o) for o in objs]
     ar_proc = subprocess.run(
-        ar_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        ar_cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     stdout_parts.append(ar_proc.stdout)
     stderr_parts.append(ar_proc.stderr)
@@ -462,12 +470,16 @@ def run_codeforces_tests(
     sandbox: Optional[IsolateRunner] = None,
     cache: Optional[SandboxCache] = None,
     collect_coverage: bool = False,
+    shared_libs: Optional[Mapping[str, Sequence[Path]]] = None,
+    static_libs: Optional[Mapping[str, Sequence[Path]]] = None,
 ) -> dict:
     """Compile ``sources`` and run them against all tests in ``tests_dir``.
 
     The directory is expected to contain pairs of ``*.in`` and ``*.out`` files.
+    Optional ``shared_libs`` and ``static_libs`` mappings allow building
+    auxiliary libraries from source prior to compiling the main program.
     Results include compilation diagnostics and a list of per-test outcomes
-    with error classifications.  When ``collect_coverage`` is ``True`` the
+    with error classifications. When ``collect_coverage`` is ``True`` the
     program is instrumented with ``--coverage`` and ``gcov`` is used to compute
     a line coverage ratio.
     """
@@ -475,6 +487,14 @@ def run_codeforces_tests(
     key: Optional[str] = None
     if cache is not None:
         parts = [Path(s).read_bytes() for s in sources]
+        if shared_libs:
+            for srcs in shared_libs.values():
+                for p in srcs:
+                    parts.append(Path(p).read_bytes())
+        if static_libs:
+            for srcs in static_libs.values():
+                for p in srcs:
+                    parts.append(Path(p).read_bytes())
         for f in sorted(Path(tests_dir).glob("*")):
             if f.is_file():
                 parts.append(f.read_bytes())
@@ -491,54 +511,147 @@ def run_codeforces_tests(
     compile_flags = list(flags) if flags is not None else list(DEFAULT_FLAGS)
     if collect_coverage:
         compile_flags.append("--coverage")
-    compile_res = compile_cpp_sources(
-        sources,
-        compiler=compiler,
-        flags=compile_flags,
-        sanitize=sanitize,
-        static=static,
-        library_dirs=library_dirs,
-        libraries=libraries,
-        rpath=rpath,
-        use_ccache=use_ccache,
-    )
-    compile_status = classify_compile(
-        compile_res.success, compile_res.stderr
-    )
-    if not compile_res.success or compile_res.binary is None:
+
+    stdout_parts: List[str] = []
+    stderr_parts: List[str] = []
+    total_warnings = 0
+    total_errors = 0
+
+    with tempfile.TemporaryDirectory() as lib_tmp:
+        lib_dirs: List[Path] = []
+        lib_names: List[str] = []
+        rpath_list: List[Path] = list(rpath) if rpath is not None else []
+
+        if shared_libs:
+            for name, srcs in shared_libs.items():
+                out = Path(lib_tmp) / f"lib{name}.so"
+                res = compile_shared_library(
+                    srcs,
+                    output=out,
+                    compiler=compiler,
+                    flags=compile_flags,
+                    sanitize=sanitize,
+                    use_ccache=use_ccache,
+                )
+                stdout_parts.append(res.stdout)
+                stderr_parts.append(res.stderr)
+                total_warnings += res.warnings
+                total_errors += res.errors
+                if not res.success or res.binary is None:
+                    compile_status = classify_compile(res.success, res.stderr)
+                    data = {
+                        "compile_stdout": "".join(stdout_parts),
+                        "compile_stderr": "".join(stderr_parts),
+                        "compile_warnings": total_warnings,
+                        "compile_errors": total_errors,
+                        "compile_status": compile_status,
+                        "results": [],
+                    }
+                    if cache is not None and key is not None:
+                        cache.store(key, data)
+                    return data
+                lib_dirs.append(out.parent)
+                lib_names.append(name)
+                rpath_list.append(out.parent)
+
+        if static_libs:
+            for name, srcs in static_libs.items():
+                out = Path(lib_tmp) / f"lib{name}.a"
+                res = compile_static_library(
+                    srcs,
+                    output=out,
+                    compiler=compiler,
+                    flags=compile_flags,
+                    sanitize=sanitize,
+                    use_ccache=use_ccache,
+                )
+                stdout_parts.append(res.stdout)
+                stderr_parts.append(res.stderr)
+                total_warnings += res.warnings
+                total_errors += res.errors
+                if not res.success or res.binary is None:
+                    compile_status = classify_compile(res.success, res.stderr)
+                    data = {
+                        "compile_stdout": "".join(stdout_parts),
+                        "compile_stderr": "".join(stderr_parts),
+                        "compile_warnings": total_warnings,
+                        "compile_errors": total_errors,
+                        "compile_status": compile_status,
+                        "results": [],
+                    }
+                    if cache is not None and key is not None:
+                        cache.store(key, data)
+                    return data
+                lib_dirs.append(out.parent)
+                lib_names.append(name)
+
+        if library_dirs is not None:
+            library_dirs = list(library_dirs) + lib_dirs
+        else:
+            library_dirs = lib_dirs
+        if libraries is not None:
+            libraries = list(libraries) + lib_names
+        else:
+            libraries = lib_names
+        if rpath is not None:
+            rpath = list(rpath) + rpath_list
+        else:
+            rpath = rpath_list
+
+        compile_res = compile_cpp_sources(
+            sources,
+            compiler=compiler,
+            flags=compile_flags,
+            sanitize=sanitize,
+            static=static,
+            library_dirs=library_dirs,
+            libraries=libraries,
+            rpath=rpath,
+            use_ccache=use_ccache,
+        )
+        compile_status = classify_compile(
+            compile_res.success, compile_res.stderr
+        )
+        stdout_parts.append(compile_res.stdout)
+        stderr_parts.append(compile_res.stderr)
+        total_warnings += compile_res.warnings
+        total_errors += compile_res.errors
+        if not compile_res.success or compile_res.binary is None:
+            data = {
+                "compile_stdout": "".join(stdout_parts),
+                "compile_stderr": "".join(stderr_parts),
+                "compile_warnings": total_warnings,
+                "compile_errors": total_errors,
+                "compile_status": compile_status,
+                "results": [],
+            }
+            if cache is not None and key is not None:
+                cache.store(key, data)
+            return data
+
+        run_res = run_io_tests(
+            compile_res.binary,
+            tests_dir,
+            timeout=timeout,
+            memory_limit=memory_limit,
+            env=env,
+            sandbox=sandbox,
+        )
+        coverage_ratio = 0.0
+        if collect_coverage:
+            coverage_ratio = _collect_coverage(
+                sources, compile_res.binary.parent
+            )
         data = {
-            "compile_stdout": compile_res.stdout,
-            "compile_stderr": compile_res.stderr,
-            "compile_warnings": compile_res.warnings,
-            "compile_errors": compile_res.errors,
+            "compile_stdout": "".join(stdout_parts),
+            "compile_stderr": "".join(stderr_parts),
+            "compile_warnings": total_warnings,
+            "compile_errors": total_errors,
             "compile_status": compile_status,
-            "results": [],
+            "results": run_res["results"],
         }
+        if collect_coverage:
+            data["coverage"] = coverage_ratio
         if cache is not None and key is not None:
             cache.store(key, data)
         return data
-
-    run_res = run_io_tests(
-        compile_res.binary,
-        tests_dir,
-        timeout=timeout,
-        memory_limit=memory_limit,
-        env=env,
-        sandbox=sandbox,
-    )
-    coverage_ratio = 0.0
-    if collect_coverage:
-        coverage_ratio = _collect_coverage(sources, compile_res.binary.parent)
-    data = {
-        "compile_stdout": compile_res.stdout,
-        "compile_stderr": compile_res.stderr,
-        "compile_warnings": compile_res.warnings,
-        "compile_errors": compile_res.errors,
-        "compile_status": compile_status,
-        "results": run_res["results"],
-    }
-    if collect_coverage:
-        data["coverage"] = coverage_ratio
-    if cache is not None and key is not None:
-        cache.store(key, data)
-    return data
