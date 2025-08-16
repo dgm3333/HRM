@@ -10,15 +10,19 @@ from utils.ast_edit import CppAst
 
 CPP_SNIPPET = """int add(int a, int b) { return a + b; }"""
 
-_HAS_CHILD = hasattr(CppAst().parse("int x; ").root_node, "child")
 
-
-@pytest.mark.skipif(not _HAS_CHILD, reason="tree-sitter Node.child not available")
-def test_parse_and_basic_edits():
+def _parser_available() -> bool:
     try:
         ast = CppAst()
-    except Exception as e:  # pragma: no cover - environment missing parser
-        pytest.skip(f"Tree-sitter parser unavailable: {e}")
+        ast.parse("int x; ")
+        return True
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(not _parser_available(), reason="Tree-sitter parser unavailable")
+def test_parse_and_basic_edits():
+    ast = CppAst()
     tree = ast.parse(CPP_SNIPPET)
     assert tree.root_node.type == "translation_unit"
 
@@ -36,4 +40,3 @@ def test_parse_and_basic_edits():
     comment_node = ast.parse(inserted.code).root_node.child(0)
     deleted = ast.delete(inserted.code, comment_node)
     assert ast.is_valid(deleted.code)
-
