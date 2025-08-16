@@ -3,7 +3,11 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-from dataset.version_lock import compute_dataset_hash, update_version  # noqa: E402
+from dataset.version_lock import (  # noqa: E402
+    compute_dataset_hash,
+    update_version,
+    verify_version,
+)
 
 
 def test_update_version_writes_hash(tmp_path):
@@ -32,3 +36,14 @@ def test_compute_dataset_hash_matches_update(tmp_path):
     versions_file = tmp_path / "versions.yml"
     digest2 = update_version("sample", str(ds), str(versions_file))
     assert digest == digest2
+
+
+def test_verify_version(tmp_path):
+    ds = tmp_path / "ds"
+    ds.mkdir()
+    (ds / "f.txt").write_text("hello")
+    versions_file = tmp_path / "versions.yml"
+    update_version("demo", str(ds), str(versions_file))
+    assert verify_version("demo", str(ds), str(versions_file))
+    (ds / "f.txt").write_text("world")
+    assert not verify_version("demo", str(ds), str(versions_file))
