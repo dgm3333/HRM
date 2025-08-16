@@ -14,15 +14,15 @@ def test_classify_compile_errors(tmp_path: Path) -> None:
         "#include <nonexistent_header.h>\n"
         "int main(){}"
     )
-    success, _, err, _ = compile_cpp(src, sanitize=False)
-    assert not success
-    assert classify_compile(success, err) == "compile_error"
+    res = compile_cpp(src, sanitize=False)
+    assert not res.success
+    assert classify_compile(res.success, res.stderr) == "compile_error"
 
     src2 = tmp_path / "link.cpp"
     src2.write_text("extern int foo(); int main(){return foo();}")
-    success2, out2, err2, _ = compile_cpp(src2, sanitize=False)
-    assert not success2
-    assert classify_compile(success2, err2) == "link_error"
+    res2 = compile_cpp(src2, sanitize=False)
+    assert not res2.success
+    assert classify_compile(res2.success, res2.stderr) == "link_error"
 
 
 def test_classify_runtime_conditions(tmp_path: Path) -> None:
@@ -30,18 +30,18 @@ def test_classify_runtime_conditions(tmp_path: Path) -> None:
     # Runtime error due to non-zero exit code
     src = tmp_path / "runtime.cpp"
     src.write_text("int main(){return 1;}")
-    success, _, err, binary = compile_cpp(src, sanitize=False)
-    assert success and binary is not None
-    code, out, err = run_binary(binary)
+    res = compile_cpp(src, sanitize=False)
+    assert res.success and res.binary is not None
+    code, out, err = run_binary(res.binary)
     assert classify_runtime(code, err) == "runtime_error"
 
     # Timeout
     src_t = tmp_path / "loop.cpp"
     src_t.write_text("int main(){while(true){} }")
-    success_t, _, _, binary_t = compile_cpp(src_t, sanitize=False)
-    assert success_t and binary_t is not None
+    res_t = compile_cpp(src_t, sanitize=False)
+    assert res_t.success and res_t.binary is not None
     try:
-        run_binary(binary_t, timeout=0.1)
+        run_binary(res_t.binary, timeout=0.1)
         timed_out = False
         code, _, err_t = 0, "", ""
     except subprocess.TimeoutExpired:
@@ -55,7 +55,7 @@ def test_classify_runtime_conditions(tmp_path: Path) -> None:
         "#include <iostream>\nint main(){int *p=new int[1];delete[] p;"
         "std::cout<<p[0];}"
     )
-    success_s, _, _, binary_s = compile_cpp(src_s)
-    assert success_s and binary_s is not None
-    code_s, _, err_s = run_binary(binary_s)
+    res_s = compile_cpp(src_s)
+    assert res_s.success and res_s.binary is not None
+    code_s, _, err_s = run_binary(res_s.binary)
     assert classify_runtime(code_s, err_s) == "sanitizer_error"

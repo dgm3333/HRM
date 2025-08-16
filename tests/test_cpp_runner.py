@@ -6,13 +6,18 @@ import re
 import subprocess
 import sys
 
+import pytest
+
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
+import runners.cpp_runner as cpp_runner
 from runners.cpp_runner import (
     compile_cpp_sources,
     compile_shared_library,
     run_binary,
+    run_codeforces_tests,
 )
+from runners.sandbox_cache import SandboxCache
 
 
 def test_compile_multi_file(tmp_path: Path) -> None:
@@ -147,3 +152,49 @@ def test_warning_count(tmp_path: Path) -> None:
     ], flags=["-std=c++17", "-Wall"], sanitize=False)
     assert res.success
     assert res.warnings >= 1
+
+
+class SpyRunner:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def run(self, cmd, **kwargs):
+        self.calls += 1
+        return subprocess.run(
+            cmd,
+            input=kwargs.get("stdin"),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+
+def test_run_codeforces_tests_cache(tmp_path: Path, monkeypatch):
+    src = tmp_path / "main.cpp"
+    src.write_text(
+        "#include <iostream>\nint main(){int a,b; if(!(std::cin>>a>>b)) return 0; std::cout<<a+b;}"
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("1 2\n")
+    (tests_dir / "a.out").write_text("3\n")
+
+    cache = SandboxCache(tmp_path / "cache")
+    spy = SpyRunner()
+
+    calls = {"compile": 0}
+
+    original_compile = cpp_runner.compile_cpp_sources
+
+    def wrapped_compile(*args, **kwargs):
+        calls["compile"] += 1
+        return original_compile(*args, **kwargs)
+
+    monkeypatch.setattr(cpp_runner, "compile_cpp_sources", wrapped_compile)
+
+    first = run_codeforces_tests([src], tests_dir, sandbox=spy, cache=cache)
+    assert calls["compile"] == 1
+    second = run_codeforces_tests([src], tests_dir, sandbox=spy, cache=cache)
+    assert calls["compile"] == 1
+    assert spy.calls == 1
+    assert first == second
