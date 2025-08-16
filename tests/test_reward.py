@@ -42,3 +42,34 @@ def test_reward_aggregator_basic():
 
     hist = agg.histogram()
     assert sum(hist) == 2
+
+
+def test_reward_with_lint_static_and_coverage_delta():
+    agg = RewardAggregator(
+        weights={
+            'compile': 0.1,
+            'tests': 0.3,
+            'coverage': 0.2,
+            'coverage_delta': 0.2,
+            'lint': 0.1,
+            'static': 0.1,
+        },
+        max_edit_penalty=0.0,
+        max_time_penalty=0.0,
+        max_memory_penalty=0.0,
+    )
+
+    r = agg.compute(
+        compile_success=True,
+        tests_passed=3,
+        tests_total=4,
+        coverage=0.6,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        lint_score=0.5,
+        static_score=0.8,
+        prev_coverage=0.4,
+    )
+
+    assert abs(r - 0.615) < 1e-6

@@ -10,7 +10,8 @@ class RewardAggregator:
     Parameters
     ----------
     weights: mapping of signal name to weight. Supported keys are
-        ``compile``, ``tests`` and ``coverage``.
+        ``compile``, ``tests``, ``coverage``, ``coverage_delta``,
+        ``lint`` and ``static``.
     max_edit_penalty: maximum penalty applied for edit cost.
     max_time_penalty: maximum penalty applied when runtime exceeds the limit.
     max_memory_penalty: maximum penalty applied when memory use exceeds the limit.
@@ -31,6 +32,9 @@ class RewardAggregator:
         edit_cost: float,
         time_used: float,
         memory_used: float,
+        lint_score: float = 1.0,
+        static_score: float = 1.0,
+        prev_coverage: float | None = None,
         time_limit: float | None = None,
         memory_limit: float | None = None,
     ) -> float:
@@ -45,6 +49,9 @@ class RewardAggregator:
         edit_cost: number of edit operations performed.
         time_used: wall-clock seconds consumed.
         memory_used: peak memory usage in megabytes.
+        lint_score: normalized score from clang-tidy/clang diagnostics.
+        static_score: normalized score from static analysis tools (e.g. cppcheck).
+        prev_coverage: previous coverage value used to compute coverage delta.
         time_limit: optional runtime limit.
         memory_limit: optional memory limit.
         """
@@ -54,10 +61,15 @@ class RewardAggregator:
         compile_score = 1.0 if compile_success else 0.0
         test_score = tests_passed / tests_total if tests_total else 0.0
         coverage_score = max(0.0, min(coverage, 1.0))
+        prev_cov = max(0.0, min(prev_coverage, 1.0)) if prev_coverage is not None else None
+        coverage_delta = max(0.0, coverage_score - prev_cov) if prev_cov is not None else 0.0
 
         reward += self.weights.get("compile", 0.0) * compile_score
         reward += self.weights.get("tests", 0.0) * test_score
         reward += self.weights.get("coverage", 0.0) * coverage_score
+        reward += self.weights.get("coverage_delta", 0.0) * coverage_delta
+        reward += self.weights.get("lint", 0.0) * max(0.0, min(lint_score, 1.0))
+        reward += self.weights.get("static", 0.0) * max(0.0, min(static_score, 1.0))
 
         # Penalties
         reward -= min(edit_cost * self.max_edit_penalty, self.max_edit_penalty)
