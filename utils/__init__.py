@@ -5,6 +5,7 @@ from .functions import load_model_class, get_model_source_path  # noqa: F401
 from .diagnostics import (  # noqa: F401
     clang_tidy_score,
     cppcheck_score,
+    compiler_diagnostics,
     coverage_delta,
 )
 
