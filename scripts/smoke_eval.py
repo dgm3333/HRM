@@ -16,6 +16,12 @@ from torch.utils.data import DataLoader, TensorDataset
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 from hrm.training_loop import HRMTrainer, HRMTrainingConfig  # noqa: E402
+from utils.mlflow_logger import (  # noqa: E402
+    end_run,
+    log_metrics,
+    log_params,
+    start_run,
+)
 
 
 class TinyModel(nn.Module):
@@ -44,6 +50,9 @@ def main() -> None:
     opt = torch.optim.SGD(model.parameters(), lr=0.1)
     trainer = HRMTrainer(model, opt, HRMTrainingConfig())
 
+    start_run("smoke-eval", tags={"phase": "8"})
+    log_params({"model": "TinyModel", "dataset_size": len(dataset)})
+
     # Run a quick supervised epoch to initialise weights
     trainer.sft_epoch(loader)
 
@@ -57,6 +66,8 @@ def main() -> None:
             correct += int(pred.eq(target).item())
     acc = correct / len(dataset)
     print(f"accuracy={acc:.2f}")
+    log_metrics({"accuracy": acc})
+    end_run()
 
 
 if __name__ == "__main__":

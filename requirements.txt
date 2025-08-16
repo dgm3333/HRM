@@ -14,3 +14,4 @@ uvicorn
 pytest
 tree_sitter
 tree_sitter_languages
+mlflow

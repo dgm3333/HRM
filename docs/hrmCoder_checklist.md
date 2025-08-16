@@ -93,7 +93,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Create nightly full evaluation job with retention and tagging
     [X] Implement version stamping (git SHA, Docker digest, seeds) in runs
     [X] Configure GitHub Pages publish for latest report artifacts
-    [ ] Bootstrap MLflow or W\&B project with tags and run summaries
+    [~] Bootstrap MLflow or W\&B project with tags and run summaries
 
 ** [ ] Phase 9: AST-Edit Action Space (v2)
     [X] Integrate Tree-sitter C++ grammar and bindings
