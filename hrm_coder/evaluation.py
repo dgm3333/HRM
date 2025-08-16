@@ -96,13 +96,52 @@ def flaky_tasks(runs: Sequence[Dict[str, bool]]) -> List[str]:
     ]
 
 
-def markdown_report(metrics: Dict[int, float], flaky: Sequence[str]) -> str:
+def incident_rates(
+    runs: Sequence[Dict[str, str]],
+    incident_types: Sequence[str] = ("timeout", "sanitizer"),
+) -> Dict[str, float]:
+    """Compute rates of specified incident types across runs.
+
+    Parameters
+    ----------
+    runs:
+        Sequence of mappings from task identifier to a status string.
+    incident_types:
+        Iterable of status values to measure. Defaults to ``("timeout",
+        "sanitizer")``.
+    """
+
+    counts = {inc: 0 for inc in incident_types}
+    total = 0
+    for run in runs:
+        for status in run.values():
+            total += 1
+            for inc in incident_types:
+                if status == inc:
+                    counts[inc] += 1
+    return {
+        inc: (counts[inc] / total if total else 0.0)
+        for inc in incident_types
+    }
+
+
+def markdown_report(
+    metrics: Dict[int, float],
+    flaky: Sequence[str],
+    incidents: Dict[str, float] | None = None,
+) -> str:
     """Generate a Markdown report for the evaluation metrics."""
 
     lines = ["# Evaluation Report", "", "| k | pass@k |", "|---|-------|"]
     for k, value in sorted(metrics.items()):
         lines.append(f"| {k} | {value:.3f} |")
     lines.append("")
+    if incidents:
+        lines.append("## Incident Rates")
+        lines.extend(
+            f"- {name}: {rate:.3f}" for name, rate in incidents.items()
+        )
+        lines.append("")
     if flaky:
         lines.append("## Flaky Tasks")
         lines.extend(f"- {task}" for task in flaky)
@@ -111,7 +150,11 @@ def markdown_report(metrics: Dict[int, float], flaky: Sequence[str]) -> str:
     return "\n".join(lines)
 
 
-def html_report(metrics: Dict[int, float], flaky: Sequence[str]) -> str:
+def html_report(
+    metrics: Dict[int, float],
+    flaky: Sequence[str],
+    incidents: Dict[str, float] | None = None,
+) -> str:
     """Generate a minimal HTML report for the evaluation metrics."""
 
     rows = "".join(
@@ -124,10 +167,22 @@ def html_report(metrics: Dict[int, float], flaky: Sequence[str]) -> str:
         ) + "</ul>"
     else:
         flaky_html = "<p>No flaky tasks detected.</p>"
+    if incidents:
+        incidents_html = (
+            "<ul>"
+            + "".join(
+                f"<li>{name}: {rate:.3f}</li>"
+                for name, rate in incidents.items()
+            )
+            + "</ul>"
+        )
+    else:
+        incidents_html = "<p>No incidents recorded.</p>"
     return (
         "<h1>Evaluation Report</h1>"
         "<table><tr><th>k</th><th>pass@k</th></tr>"
         f"{rows}</table>"
+        f"{incidents_html}"
         f"{flaky_html}"
     )
 
@@ -223,6 +278,7 @@ def generate_reports(
     ks: Sequence[int] = (1, 10),
     run_paths: Sequence[str] | None = None,
     baseline_path: str | None = None,
+    incident_paths: Sequence[str] | None = None,
 ) -> Dict[int, float]:
     """Compute metrics and emit Markdown/HTML reports.
 
@@ -240,6 +296,9 @@ def generate_reports(
     baseline_path:
         Optional path to a JSON file containing baseline metrics for
         comparison.  Baseline keys should be of the form ``"pass@k"``.
+    incident_paths:
+        Optional JSON files mapping task id → status string, used to
+        compute incident rates such as timeouts and sanitizer failures.
 
     Returns
     -------
@@ -257,10 +316,22 @@ def generate_reports(
     )
     flaky = flaky_tasks(runs) if runs else []
 
+    incidents = (
+        incident_rates(
+            [json.loads(Path(p).read_text()) for p in incident_paths]
+        )
+        if incident_paths
+        else None
+    )
+
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "report.md").write_text(markdown_report(metrics, flaky))
-    (out_dir / "report.html").write_text(html_report(metrics, flaky))
+    (out_dir / "report.md").write_text(
+        markdown_report(metrics, flaky, incidents)
+    )
+    (out_dir / "report.html").write_text(
+        html_report(metrics, flaky, incidents)
+    )
 
     if baseline_path is not None:
         named_metrics = {f"pass@{k}": v for k, v in metrics.items()}
@@ -304,6 +375,12 @@ def main() -> None:  # pragma: no cover - CLI entry point
         default=None,
         help="JSON file with baseline metrics for comparison",
     )
+    parser.add_argument(
+        "--incidents",
+        nargs="*",
+        default=None,
+        help="JSON files of run status strings for incident rate computation",
+    )
     args = parser.parse_args()
     generate_reports(
         results_path=args.results,
@@ -311,6 +388,7 @@ def main() -> None:  # pragma: no cover - CLI entry point
         ks=args.ks,
         run_paths=args.runs,
         baseline_path=args.baseline,
+        incident_paths=args.incidents,
     )
 
 
