@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Optional
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,15 +24,23 @@ def get_runs(offset: int = 0, limit: int = 10):
 
 
 @app.post("/train", response_model=Run)
-def start_train(config: Dict[str, str] | None = None):
-    run = registry.create_run(config)
+def start_train(
+    config: Dict[str, str] | None = None,
+    seed: Optional[int] = None,
+    docker_digest: Optional[str] = None,
+):
+    run = registry.create_run(config, seed=seed, docker_digest=docker_digest)
     registry.update_status(run.id, "training")
     return run
 
 
 @app.post("/eval", response_model=Run)
-def start_eval(config: Dict[str, str] | None = None):
-    run = registry.create_run(config)
+def start_eval(
+    config: Dict[str, str] | None = None,
+    seed: Optional[int] = None,
+    docker_digest: Optional[str] = None,
+):
+    run = registry.create_run(config, seed=seed, docker_digest=docker_digest)
     registry.update_status(run.id, "evaluating")
     return run
 
