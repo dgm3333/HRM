@@ -23,7 +23,9 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config(args.overrides)
-    pin_environment()
+    pin_environment(
+        cfg.environment.seed, cfg.environment.timezone, cfg.environment.locale
+    )
 
     print("Loaded configuration:")
     print(pformat(asdict(cfg)))
