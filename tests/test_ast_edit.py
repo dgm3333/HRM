@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -9,12 +10,15 @@ from utils.ast_edit import CppAst
 
 CPP_SNIPPET = """int add(int a, int b) { return a + b; }"""
 
+_HAS_CHILD = hasattr(CppAst().parse("int x; ").root_node, "child")
 
+
+@pytest.mark.skipif(not _HAS_CHILD, reason="tree-sitter Node.child not available")
 def test_parse_and_basic_edits():
     try:
         ast = CppAst()
-    except Exception as exc:  # pragma: no cover - environment dependent
-        pytest.skip(f"tree-sitter not available: {exc}")
+    except Exception as e:  # pragma: no cover - environment missing parser
+        pytest.skip(f"Tree-sitter parser unavailable: {e}")
     tree = ast.parse(CPP_SNIPPET)
     assert tree.root_node.type == "translation_unit"
 

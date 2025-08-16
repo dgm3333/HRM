@@ -3,12 +3,15 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from itertools import count
+import asyncio
 
 
 class Run(BaseModel):
     id: int
     config: Dict[str, str] = Field(default_factory=dict)
     status: str = "pending"
+    logs: List[str] = Field(default_factory=list)
+    artifact: Optional[str] = None
 
 
 class RunRegistry:
@@ -18,11 +21,13 @@ class RunRegistry:
 
     def __init__(self) -> None:
         self._runs: Dict[int, Run] = {}
+        self._log_queues: Dict[int, asyncio.Queue[str]] = {}
 
     def create_run(self, config: Optional[Dict[str, str]] = None) -> Run:
         run_id = next(self._id_counter)
         run = Run(id=run_id, config=config or {})
         self._runs[run_id] = run
+        self._log_queues[run_id] = asyncio.Queue()
         return run
 
     def list_runs(self, offset: int = 0, limit: int = 10) -> List[Run]:
@@ -32,6 +37,19 @@ class RunRegistry:
     def update_status(self, run_id: int, status: str) -> None:
         if run_id in self._runs:
             self._runs[run_id].status = status
+
+    # Logging helpers -------------------------------------------------
+
+    def append_log(self, run_id: int, message: str) -> None:
+        if run_id in self._runs:
+            self._runs[run_id].logs.append(message)
+            self._log_queues[run_id].put_nowait(message)
+
+    def get_logs(self, run_id: int) -> List[str]:
+        return self._runs.get(run_id, Run(id=run_id)).logs
+
+    def get_log_queue(self, run_id: int) -> "asyncio.Queue[str]":
+        return self._log_queues.setdefault(run_id, asyncio.Queue())
 
 
 registry = RunRegistry()

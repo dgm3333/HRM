@@ -12,7 +12,7 @@ Save new code files in: C:\repos\hrm-coder
 # Progress Checklist
 
 ** [~] Phase 0: Discovery & Reuse Audit
-    [~] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
+    [X] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
     [ ] Setup project operation within isolate/gVisor runner images
     [ ] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
     [ ] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes
@@ -23,11 +23,11 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
     [X] Generate project layout scaffold script for hrm-coder directory tree
-    [ ] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
-    [ ] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
-    [ ] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
+    [~] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
+    [~] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
+    [~] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
     [ ] Define Hydra config schema and default configs under conf/
-    [ ] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
+    [~] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
     [X] Implement environment pinning and seed/tz/locale normalization module
 
 ** [~] Phase 2: GUI Stub and Backend Skeleton
@@ -43,7 +43,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Implement HumanEval-CPP builder with harness generator and reference solutions
     [ ] Implement Codeforces-Intro builder (I/O testcases, constraints, per-problem time limits)
     [ ] Implement AtCoder ABC subset builder with normalized input/output cases
-    [ ] Write determinism validator to re-run and hash equality of artifacts
+    [X] Write determinism validator to re-run and hash equality of artifacts
     [ ] Integrate DVC pipelines and data/versions.yml locking
     [ ] Add dataset schema contracts and unit tests for loaders
     [~] Implement dataset split manager for train/val/test with fixed seeds
