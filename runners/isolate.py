@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import tempfile
+from pathlib import Path
 from typing import Iterable, List, Optional, Mapping
 
 
@@ -42,6 +44,7 @@ class IsolateRunner:
         stdout: Optional[str] = None,
         stderr: Optional[str] = None,
         env: Optional[Mapping[str, str]] = None,
+        fsize: Optional[int] = None,
     ) -> List[str]:
         """Build an ``isolate --run`` invocation.
 
@@ -96,6 +99,8 @@ class IsolateRunner:
         if env is not None:
             for key, value in env.items():
                 isolate_cmd.append(f"--env={key}={value}")
+        if fsize is not None:
+            isolate_cmd.append(f"--fsize={fsize}")
         isolate_cmd.extend(["--run", "--"])
         isolate_cmd.extend(command)
         return isolate_cmd
@@ -115,6 +120,8 @@ class IsolateRunner:
         stderr: Optional[str] = None,
         stdin: Optional[bytes] = None,
         env: Optional[Mapping[str, str]] = None,
+        stdout_limit: Optional[int] = None,
+        stderr_limit: Optional[int] = None,
     ) -> subprocess.CompletedProcess:
         """Execute ``command`` within ``isolate``.
 
@@ -139,6 +146,19 @@ class IsolateRunner:
         if init_proc.returncode != 0:
             raise SandboxError("isolate initialization failed")
         try:
+            tmpdir_ctx: Optional[tempfile.TemporaryDirectory[str]] = None
+            if workdir is None:
+                tmpdir_ctx = tempfile.TemporaryDirectory()
+                workdir = tmpdir_ctx.name
+
+            max_limit = max(stdout_limit or 0, stderr_limit or 0)
+            fsize = (max_limit + 1023) // 1024 if max_limit else None
+
+            if stdout_limit is not None and stdout is None:
+                stdout = "stdout.txt"
+            if stderr_limit is not None and stderr is None:
+                stderr = "stderr.txt"
+
             cmd = self.build_command(
                 command,
                 time_limit=time_limit,
@@ -151,6 +171,7 @@ class IsolateRunner:
                 stdout=stdout,
                 stderr=stderr,
                 env=env,
+                fsize=fsize,
             )
             proc = subprocess.run(
                 cmd,
@@ -158,6 +179,25 @@ class IsolateRunner:
                 capture_output=True,
                 text=True,
                 check=False,
+            )
+            stdout_data = proc.stdout
+            stderr_data = proc.stderr
+            if stdout is not None:
+                path = Path(workdir) / stdout
+                if path.exists():
+                    data = path.read_text()
+                    stdout_data = (
+                        data[: stdout_limit] if stdout_limit is not None else data
+                    )
+            if stderr is not None:
+                path = Path(workdir) / stderr
+                if path.exists():
+                    data = path.read_text()
+                    stderr_data = (
+                        data[: stderr_limit] if stderr_limit is not None else data
+                    )
+            return subprocess.CompletedProcess(
+                cmd, proc.returncode, stdout_data, stderr_data
             )
         finally:
             subprocess.run(
@@ -169,4 +209,5 @@ class IsolateRunner:
                 capture_output=True,
                 text=True,
             )
-        return proc
+            if tmpdir_ctx is not None:
+                tmpdir_ctx.cleanup()
