@@ -92,7 +92,7 @@ Save new code files in: C:\repos\hrm-coder
     [?] Create CI smoke evaluation job on sample subset with artifacts (ctest + lcov upload)
     [~] Create nightly full evaluation job with retention and tagging
     [X] Implement version stamping (git SHA, Docker digest, seeds) in runs
-    [~] Configure GitHub Pages publish for latest report artifacts
+    [X] Configure GitHub Pages publish for latest report artifacts
     [ ] Bootstrap MLflow or W\&B project with tags and run summaries
 
 ** [ ] Phase 9: AST-Edit Action Space (v2)

@@ -1,0 +1,45 @@
+name: Publish Reports to GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Prepare Pages artifact
+        run: |
+          if [ -d reports ]; then
+            python scripts/publish_reports.py reports public
+          else
+            echo "No reports directory found, creating placeholder."
+            mkdir -p public
+            echo '<html><body><h1>No reports available</h1></body></html>' > public/index.html
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
