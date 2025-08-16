@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 from typing import Iterable, List
 
-from split_manager import split_list
+from .split_manager import split_list
 
 
 @dataclass
