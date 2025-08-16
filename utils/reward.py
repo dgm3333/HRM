@@ -22,12 +22,14 @@ class RewardAggregator:
     max_edit_penalty: maximum penalty applied for edit cost.
     max_time_penalty: maximum penalty applied when runtime exceeds the limit.
     max_memory_penalty: maximum penalty applied when memory use exceeds the limit.
+    all_green_bonus: additional reward added when all tests pass.
     """
 
     weights: Dict[str, float]
     max_edit_penalty: float = 0.1
     max_time_penalty: float = 0.1
     max_memory_penalty: float = 0.1
+    all_green_bonus: float = 0.0
     history: List[float] = field(default_factory=list)
 
     def compute(
@@ -51,6 +53,7 @@ class RewardAggregator:
         Parameters
         ----------
         compile_success: whether compilation (and link) succeeded.
+            When ``False`` all test and coverage signals are ignored.
         tests_passed: number of unit tests passed.
         tests_total: total number of unit tests executed.
         coverage: code coverage ratio in [0, 1].
@@ -69,14 +72,23 @@ class RewardAggregator:
         reward = 0.0
 
         compile_score = 1.0 if compile_success else 0.0
-        test_score = tests_passed / tests_total if tests_total else 0.0
-        coverage_score = max(0.0, min(coverage, 1.0))
-        prev_cov = (
-            max(0.0, min(prev_coverage, 1.0))
-            if prev_coverage is not None
-            else None
-        )
-        cov_delta = coverage_delta(prev_cov, coverage_score) if prev_cov is not None else 0.0
+        if compile_success:
+            test_score = tests_passed / tests_total if tests_total else 0.0
+            coverage_score = max(0.0, min(coverage, 1.0))
+            prev_cov = (
+                max(0.0, min(prev_coverage, 1.0))
+                if prev_coverage is not None
+                else None
+            )
+            cov_delta = (
+                coverage_delta(prev_cov, coverage_score)
+                if prev_cov is not None
+                else 0.0
+            )
+        else:
+            test_score = 0.0
+            coverage_score = 0.0
+            cov_delta = 0.0
 
         reward += self.weights.get("compile", 0.0) * compile_score
         reward += self.weights.get("tests", 0.0) * test_score
@@ -87,6 +99,9 @@ class RewardAggregator:
         if sanitizer_clean is not None:
             san_score = 1.0 if sanitizer_clean else -1.0
             reward += self.weights.get("sanitizer", 0.0) * san_score
+
+        if compile_success and tests_total and tests_passed == tests_total:
+            reward += self.all_green_bonus
 
         # Penalties
         reward -= min(edit_cost * self.max_edit_penalty, self.max_edit_penalty)

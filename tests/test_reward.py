@@ -180,3 +180,49 @@ def test_sanitizer_bonus_and_penalty():
     assert abs(crash - 0.2) < 1e-6
     assert abs(clean - clean2) < 1e-6
     assert abs(crash - crash2) < 1e-6
+
+
+def test_all_green_bonus_and_compile_gate():
+    agg = RewardAggregator(
+        weights={"compile": 0.1, "tests": 0.2},
+        all_green_bonus=0.5,
+        max_edit_penalty=0.0,
+        max_time_penalty=0.0,
+        max_memory_penalty=0.0,
+    )
+
+    # All tests pass → bonus applied
+    all_green = agg.compute(
+        compile_success=True,
+        tests_passed=3,
+        tests_total=3,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+    )
+    assert abs(all_green - 0.8) < 1e-6
+
+    # Partial pass → no bonus
+    partial = agg.compute(
+        compile_success=True,
+        tests_passed=2,
+        tests_total=3,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+    )
+    assert partial < all_green
+
+    # Compile failure should gate tests/coverage contributions
+    gated = agg.compute(
+        compile_success=False,
+        tests_passed=3,
+        tests_total=3,
+        coverage=1.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+    )
+    assert gated == 0.0

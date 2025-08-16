@@ -63,6 +63,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement coverage delta computation using gcov/lcov or llvm-cov
     [X] Implement edit-cost, time, and memory penalty functions with clamps
     [X] Add reward histogram logging to tracker with sanity checks
+    [X] Add all-green test bonus to reward aggregator
 
 ** [~] Phase 6: HRM Training Loop Integration
     [X] Implement CodeEncoder interface and tokenizer utilities for C++ syntax
