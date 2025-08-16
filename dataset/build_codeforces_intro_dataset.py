@@ -27,6 +27,7 @@ from typing import List
 
 from .schemas import CodeforcesRecord
 from .split_manager import split_list
+from .version_lock import update_version
 
 
 @dataclass
@@ -82,7 +83,15 @@ def write_task(task: CodeforcesTask, dest: Path) -> None:
     (dest / "meta.json").write_text(json.dumps(meta))
 
 
-def build_dataset(raw_path: str, output_dir: str, seed: int = 0) -> None:
+DATASET_NAME = "codeforces_intro"
+
+
+def build_dataset(
+    raw_path: str,
+    output_dir: str,
+    seed: int = 0,
+    versions_path: str | None = None,
+) -> None:
     tasks = load_tasks(Path(raw_path))
     splits = split_list(tasks, seed)
 
@@ -90,6 +99,9 @@ def build_dataset(raw_path: str, output_dir: str, seed: int = 0) -> None:
     for split_name, subset in splits.items():
         for task in subset:
             write_task(task, out_dir / split_name / task.task_id)
+
+    if versions_path is not None:
+        update_version(DATASET_NAME, str(out_dir), versions_path)
 
 
 if __name__ == "__main__":
@@ -110,6 +122,14 @@ if __name__ == "__main__":
         default=0,
         help="Random seed for deterministic splits",
     )
+    parser.add_argument(
+        "--versions", help="Path to versions.yml for hash locking"
+    )
     args = parser.parse_args()
 
-    build_dataset(args.raw_path, args.output_dir, args.seed)
+    build_dataset(
+        args.raw_path,
+        args.output_dir,
+        args.seed,
+        versions_path=args.versions,
+    )
