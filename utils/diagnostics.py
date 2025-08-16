@@ -27,6 +27,15 @@ def cppcheck_score(output: str) -> float:
     return max(0.0, 1.0 - 0.1 * problems)
 
 
+def compiler_diagnostics(stdout: str, stderr: str) -> tuple[int, int]:
+    """Return counts of warnings and errors from compiler output."""
+
+    text = f"{stdout}\n{stderr}"
+    warnings = len(re.findall(r": warning:", text))
+    errors = len(re.findall(r": error:", text))
+    return warnings, errors
+
+
 def sanitizer_clean(output: str) -> bool:
     """Return True when no sanitizer issues are detected.
 
