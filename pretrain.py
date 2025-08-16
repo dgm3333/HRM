@@ -4,6 +4,8 @@ import os
 import math
 import yaml
 import shutil
+import random
+import numpy as np
 
 import torch
 import torch.distributed as dist
@@ -100,6 +102,15 @@ def create_dataloader(config: PretrainConfig, split: str, rank: int, world_size:
 
         **kwargs
     ), split=split)
+    generator = torch.Generator()
+    generator.manual_seed(config.seed + rank)
+
+    def _worker_init(worker_id: int) -> None:
+        worker_seed = config.seed + rank * 1000 + worker_id
+        random.seed(worker_seed)
+        np.random.seed(worker_seed)
+        torch.manual_seed(worker_seed)
+
     dataloader = DataLoader(
         dataset,
         batch_size=None,
@@ -108,7 +119,9 @@ def create_dataloader(config: PretrainConfig, split: str, rank: int, world_size:
         prefetch_factor=8,
 
         pin_memory=True,
-        persistent_workers=True
+        persistent_workers=True,
+        worker_init_fn=_worker_init,
+        generator=generator,
     )
     return dataloader, dataset.metadata
 
@@ -196,13 +209,51 @@ def init_train_state(config: PretrainConfig, train_metadata: PuzzleDatasetMetada
     )
 
 
-def save_train_state(config: PretrainConfig, train_state: TrainState):
-    # FIXME: Only saved model.
+def save_train_state(config: PretrainConfig, train_state: TrainState) -> None:
+    """Persist model and optimizer state for resuming training."""
     if config.checkpoint_path is None:
         return
 
     os.makedirs(config.checkpoint_path, exist_ok=True)
-    torch.save(train_state.model.state_dict(), os.path.join(config.checkpoint_path, f"step_{train_state.step}"))
+    checkpoint = {
+        "model": train_state.model.state_dict(),
+        "optimizers": [opt.state_dict() for opt in train_state.optimizers],
+        "step": train_state.step,
+        "total_steps": train_state.total_steps,
+        "rng_state": torch.random.get_rng_state(),
+    }
+    torch.save(
+        checkpoint,
+        os.path.join(config.checkpoint_path, f"step_{train_state.step}.pt"),
+    )
+
+
+def load_train_state(config: PretrainConfig, train_state: TrainState) -> TrainState:
+    """Load the most recent checkpoint if one exists."""
+    if config.checkpoint_path is None or not os.path.isdir(config.checkpoint_path):
+        return train_state
+
+    ckpt_files = [
+        f for f in os.listdir(config.checkpoint_path) if f.startswith("step_") and f.endswith(".pt")
+    ]
+    if not ckpt_files:
+        return train_state
+
+    ckpt_files.sort(key=lambda x: int(x.split("_")[1].split(".")[0]))
+    ckpt_path = os.path.join(config.checkpoint_path, ckpt_files[-1])
+    checkpoint = torch.load(ckpt_path, map_location="cuda")
+
+    train_state.model.load_state_dict(checkpoint["model"])
+    for opt, state in zip(train_state.optimizers, checkpoint["optimizers"]):
+        opt.load_state_dict(state)
+    train_state.step = checkpoint.get("step", 0)
+    train_state.total_steps = checkpoint.get("total_steps", train_state.total_steps)
+
+    rng_state = checkpoint.get("rng_state")
+    if rng_state is not None:
+        torch.random.set_rng_state(rng_state)
+
+    return train_state
 
 
 def compute_lr(base_lr: float, config: PretrainConfig, train_state: TrainState):
@@ -571,12 +622,21 @@ def launch(hydra_config: DictConfig):
 
     # Train state based on last stage metadata (assumed to have largest seq_len)
     train_state = init_train_state(config, stage_metadatas[-1], world_size=WORLD_SIZE)
-    train_state.total_steps = sum(int(config.stage_epochs * m.total_groups * m.mean_puzzle_examples / config.global_batch_size) for m in stage_metadatas)
+    train_state.total_steps = sum(
+        int(
+            config.stage_epochs
+            * m.total_groups
+            * m.mean_puzzle_examples
+            / config.global_batch_size
+        )
+        for m in stage_metadatas
+    )
+    train_state = load_train_state(config, train_state)
 
     # Progress bar and logger
     progress_bar = None
     if RANK == 0:
-        progress_bar = tqdm.tqdm(total=train_state.total_steps)
+        progress_bar = tqdm.tqdm(total=train_state.total_steps, initial=train_state.step)
 
         wandb.init(project="Mult-digit-mul_ACT-torch", name=config.run_name, config=config.model_dump(), settings=wandb.Settings(_disable_stats=True))  # type: ignore
         wandb.log({"num_params": sum(x.numel() for x in train_state.model.parameters())}, step=0)

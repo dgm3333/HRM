@@ -11,8 +11,8 @@ Save new code files in: C:\repos\hrm-coder
 
 # Progress Checklist
 
-** [ ] Phase 0: Discovery & Reuse Audit
-    [ ] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
+** [~] Phase 0: Discovery & Reuse Audit
+    [~] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
     [ ] Setup project operation within isolate/gVisor runner images
     [ ] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
     [ ] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes
@@ -22,34 +22,34 @@ Save new code files in: C:\repos\hrm-coder
     [ ] Create initial risk register and mitigation plan
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
-    [ ] Generate project layout scaffold script for hrm-coder directory tree
+    [X] Generate project layout scaffold script for hrm-coder directory tree
     [ ] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
     [ ] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
     [ ] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
     [ ] Define Hydra config schema and default configs under conf/
     [ ] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
-    [ ] Implement environment pinning and seed/tz/locale normalization module
+    [X] Implement environment pinning and seed/tz/locale normalization module
 
-** [ ] Phase 2: GUI Stub and Backend Skeleton
-    [ ] Scaffold FastAPI app with /runs, /train, /eval, /logs/ws endpoints
-    [ ] Implement mock run registry with in-memory store and pagination
+** [~] Phase 2: GUI Stub and Backend Skeleton
+    [X] Scaffold FastAPI app with /runs, /train, /eval, /logs/ws endpoints
+    [X] Implement mock run registry with in-memory store and pagination
     [ ] Build Run Console page with config pickers and action buttons
     [ ] Build Jobs list page with sortable metrics and artifact links
     [ ] Implement artifact static server for JUnit XML and lcov/llvm-cov HTML
     [ ] Add WebSocket log streamer with tail-follow behavior
-    [ ] Provide GUI quickstart docs and sample configs
+    [X] Provide GUI quickstart docs and sample configs
 
 ** [ ] Phase 3: Deterministic Dataset Pipeline (C++)
-    [ ] Implement HumanEval-CPP builder with harness generator and reference solutions
+    [~] Implement HumanEval-CPP builder with harness generator and reference solutions
     [ ] Implement Codeforces-Intro builder (I/O testcases, constraints, per-problem time limits)
     [ ] Implement AtCoder ABC subset builder with normalized input/output cases
     [ ] Write determinism validator to re-run and hash equality of artifacts
     [ ] Integrate DVC pipelines and data/versions.yml locking
     [ ] Add dataset schema contracts and unit tests for loaders
-    [ ] Implement dataset split manager for train/val/test with fixed seeds
+    [~] Implement dataset split manager for train/val/test with fixed seeds
 
 ** [ ] Phase 4: Sandbox Executor
-    [ ] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
+    [~] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
     [ ] Implement C++ build-and-run pipeline (CMake/g++/clang++) with JUnit XML via GoogleTest
     [ ] Add filesystem policy: temp working dir, RO mounts, stdout/stderr caps
     [ ] Implement caching layer keyed by prompt+code+tests+limits hash
@@ -57,31 +57,31 @@ Save new code files in: C:\repos\hrm-coder
     [ ] Create malicious sample integration tests (file read, fork bomb, excessive forks, socket open)
 
 ** [ ] Phase 5: Reward Shaping and Safety Gates
-    [ ] Implement reward aggregator with weighted compile/link status, tests, and coverage signals
+    [X] Implement reward aggregator with weighted compile/link status, tests, and coverage signals
     [ ] Integrate clang-tidy/clang++ -Wall -Wextra -Werror diagnostics into normalized lint score
     [ ] Integrate static analysis (cppcheck) scoring and normalization
     [ ] Implement coverage delta computation using gcov/lcov or llvm-cov
-    [ ] Implement edit-cost, time, and memory penalty functions with clamps
-    [ ] Add reward histogram logging to tracker with sanity checks
+    [X] Implement edit-cost, time, and memory penalty functions with clamps
+    [X] Add reward histogram logging to tracker with sanity checks
 
-** [ ] Phase 6: HRM Training Loop Integration
-    [ ] Implement CodeEncoder interface and tokenizer utilities for C++ syntax
+** [~] Phase 6: HRM Training Loop Integration
+    [X] Implement CodeEncoder interface and tokenizer utilities for C++ syntax
     [ ] Add optional SFT training path on canonical C++ solutions
     [ ] Integrate REINFORCE with value baseline and entropy regularization
     [ ] Implement curriculum toggles for visible versus hidden tests
-    [ ] Add checkpointing, resume logic, and deterministic dataloaders
+    [X] Add checkpointing, resume logic, and deterministic dataloaders
     [ ] Create 5-task smoke run pipeline for CI runtime budgets
 
 ** [ ] Phase 7: Evaluation Harness and Reporting
-    [ ] Implement pass\@k computation with fixed seeds and sampling policies
-    [ ] Implement determinism checker to re-run top-k with shuffled ordering
-    [ ] Implement flaky-test detector and flagging in results
-    [ ] Build HTML and Markdown report generator with tables and plots
+    [~] Implement pass\@k computation with fixed seeds and sampling policies
+    [~] Implement determinism checker to re-run top-k with shuffled ordering
+    [~] Implement flaky-test detector and flagging in results
+    [~] Build HTML and Markdown report generator with tables and plots
     [ ] Implement baseline comparator against recorded C++ code-LM prompts
-    [ ] Implement artifact bundler and uploader for reports and raw JSON
+    [~] Implement artifact bundler and uploader for reports and raw JSON
 
 ** [ ] Phase 8: CI/CD and Automation
-    [ ] Create GitHub Actions workflow for C++ lint (clang-tidy/clang-format) and unit tests on PRs
+    [~] Create GitHub Actions workflow for C++ lint (clang-tidy/clang-format) and unit tests on PRs
     [ ] Create CI smoke evaluation job on sample subset with artifacts (ctest + lcov upload)
     [ ] Create nightly full evaluation job with retention and tagging
     [ ] Implement version stamping (git SHA, Docker digest, seeds) in runs
