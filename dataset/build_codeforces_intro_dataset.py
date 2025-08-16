@@ -25,6 +25,7 @@ import json
 from pathlib import Path
 from typing import List
 
+from .schemas import CodeforcesRecord
 from .split_manager import split_list
 
 
@@ -47,15 +48,18 @@ def load_tasks(path: Path) -> List[CodeforcesTask]:
     tasks: List[CodeforcesTask] = []
     with path.open() as fh:
         for line in fh:
-            raw = json.loads(line)
-            tests = [IOPair(**t) for t in raw["tests"]]
+            record = CodeforcesRecord.model_validate_json(line)
+            tests = [
+                IOPair(input=io.input, output=io.output)
+                for io in record.tests
+            ]
             tasks.append(
                 CodeforcesTask(
-                    task_id=raw["task_id"],
-                    prompt=raw["prompt"],
+                    task_id=record.task_id,
+                    prompt=record.prompt,
                     tests=tests,
-                    time_limit_ms=raw.get("time_limit_ms", 2000),
-                    memory_limit_kb=raw.get("memory_limit_kb", 256000),
+                    time_limit_ms=record.time_limit_ms,
+                    memory_limit_kb=record.memory_limit_kb,
                 )
             )
     return tasks
@@ -91,10 +95,21 @@ def build_dataset(raw_path: str, output_dir: str, seed: int = 0) -> None:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Build Codeforces-Intro dataset")
-    parser.add_argument("raw_path", help="Path to raw JSONL dataset")
-    parser.add_argument("output_dir", help="Output directory for processed dataset")
-    parser.add_argument("--seed", type=int, default=0, help="Random seed for deterministic splits")
+    parser = argparse.ArgumentParser(
+        description="Build Codeforces-Intro dataset"
+    )
+    parser.add_argument(
+        "raw_path", help="Path to raw JSONL dataset"
+    )
+    parser.add_argument(
+        "output_dir", help="Output directory for processed dataset"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Random seed for deterministic splits",
+    )
     args = parser.parse_args()
 
     build_dataset(args.raw_path, args.output_dir, args.seed)

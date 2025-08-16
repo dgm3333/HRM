@@ -17,10 +17,10 @@ CMake/GoogleTest harness generation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import json
 from pathlib import Path
-from typing import Iterable, List
+from typing import List
 
+from .schemas import HumanEvalCPPRecord
 from .split_manager import split_list
 
 
@@ -33,16 +33,18 @@ class HumanEvalCPPTask:
 
 
 def load_tasks(path: Path) -> List[HumanEvalCPPTask]:
+    """Load tasks from a JSONL file using the HumanEvalCPPRecord schema."""
+
     tasks: List[HumanEvalCPPTask] = []
     with path.open() as fh:
         for line in fh:
-            raw = json.loads(line)
+            record = HumanEvalCPPRecord.model_validate_json(line)
             tasks.append(
                 HumanEvalCPPTask(
-                    task_id=raw["task_id"],
-                    prompt=raw["prompt"],
-                    test=raw["test"],
-                    reference_solution=raw.get("reference_solution"),
+                    task_id=record.task_id,
+                    prompt=record.prompt,
+                    test=record.test,
+                    reference_solution=record.reference_solution,
                 )
             )
     return tasks
@@ -70,10 +72,21 @@ def build_dataset(raw_path: str, output_dir: str, seed: int = 0) -> None:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Build HumanEval-CPP dataset")
-    parser.add_argument("raw_path", help="Path to raw JSONL dataset")
-    parser.add_argument("output_dir", help="Output directory for processed dataset")
-    parser.add_argument("--seed", type=int, default=0, help="Random seed for deterministic splits")
+    parser = argparse.ArgumentParser(
+        description="Build HumanEval-CPP dataset"
+    )
+    parser.add_argument(
+        "raw_path", help="Path to raw JSONL dataset"
+    )
+    parser.add_argument(
+        "output_dir", help="Output directory for processed dataset"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Random seed for deterministic splits",
+    )
     args = parser.parse_args()
 
     build_dataset(args.raw_path, args.output_dir, args.seed)
