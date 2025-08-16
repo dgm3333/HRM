@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Codeforces-Intro",
+    "license": "TBD",
+    "path": "dataset/raw-data/codeforces_intro",
+    "sha256": "TBD"
+  },
+  {
+    "name": "AtCoder-ABC",
+    "license": "TBD",
+    "path": "dataset/raw-data/atcoder_abc",
+    "sha256": "TBD"
+  },
+  {
+    "name": "Kattis-micro",
+    "license": "TBD",
+    "path": "dataset/raw-data/kattis_micro",
+    "sha256": "TBD"
+  },
+  {
+    "name": "HumanEval-CPP",
+    "license": "MIT",
+    "path": "dataset/raw-data/humaneval_cpp.jsonl",
+    "sha256": "TBD"
+  }
+]

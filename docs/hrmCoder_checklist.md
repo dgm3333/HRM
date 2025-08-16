@@ -15,7 +15,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
     [ ] Setup project operation within isolate/gVisor runner images
     [ ] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
-    [ ] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes
+    [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
     [ ] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
     [ ] Draft sandbox Threat Model and initial security requirements for native binaries
     [ ] Write ADRs for sandbox choice, experiment tracker, and GUI stack
