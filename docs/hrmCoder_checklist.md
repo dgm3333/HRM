@@ -33,10 +33,10 @@ Save new code files in: C:\repos\hrm-coder
 ** [~] Phase 2: GUI Stub and Backend Skeleton
     [X] Scaffold FastAPI app with /runs, /train, /eval, /logs/ws endpoints
     [X] Implement mock run registry with in-memory store and pagination
-    [ ] Build Run Console page with config pickers and action buttons
-    [ ] Build Jobs list page with sortable metrics and artifact links
-    [ ] Implement artifact static server for JUnit XML and lcov/llvm-cov HTML
-    [ ] Add WebSocket log streamer with tail-follow behavior
+    [X] Build Run Console page with config pickers and action buttons
+    [X] Build Jobs list page with sortable metrics and artifact links
+    [~] Implement artifact static server for JUnit XML and lcov/llvm-cov HTML
+    [X] Add WebSocket log streamer with tail-follow behavior
     [X] Provide GUI quickstart docs and sample configs
 
 ** [ ] Phase 3: Deterministic Dataset Pipeline (C++)
