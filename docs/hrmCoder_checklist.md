@@ -50,7 +50,7 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [ ] Phase 4: Sandbox Executor
     [~] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
-    [ ] Implement C++ build-and-run pipeline (CMake/g++/clang++) with JUnit XML via GoogleTest
+    [~] Implement C++ build-and-run pipeline (CMake/g++/clang++) with JUnit XML via GoogleTest
     [ ] Add filesystem policy: temp working dir, RO mounts, stdout/stderr caps
     [ ] Implement caching layer keyed by prompt+code+tests+limits hash
     [ ] Implement error taxonomy parser for compile, link, runtime, timeout, and policy violations

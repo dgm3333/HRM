@@ -1,3 +1,8 @@
+from pathlib import Path
+import sys
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
 from fastapi.testclient import TestClient
 
 from hrm_coder import app
