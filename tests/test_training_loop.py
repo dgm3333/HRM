@@ -3,10 +3,10 @@ import sys
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
-import torch
-from torch import nn
+import torch  # noqa: E402
+from torch import nn  # noqa: E402
 
-from hrm.training_loop import HRMTrainer, HRMTrainingConfig
+from hrm.training_loop import HRMTrainer, HRMTrainingConfig  # noqa: E402
 
 
 class DummyModel(nn.Module):
@@ -50,3 +50,20 @@ def test_curriculum_toggle():
     assert trainer.config.curriculum_stage == "visible"
     trainer.toggle_curriculum()
     assert trainer.config.curriculum_stage == "hidden"
+
+
+def test_sft_step_updates_model():
+    torch.manual_seed(0)
+    model = DummyModel()
+    opt = torch.optim.SGD(model.parameters(), lr=0.1)
+    trainer = HRMTrainer(model, opt)
+
+    inputs = torch.eye(2)
+    targets = torch.tensor([0, 1])
+
+    before = model.linear.weight.clone()
+    loss = trainer.sft_step(inputs, targets)
+    after = model.linear.weight
+
+    assert loss > 0
+    assert not torch.allclose(before, after)

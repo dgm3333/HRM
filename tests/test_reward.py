@@ -121,3 +121,62 @@ def test_compute_from_outputs_matches_manual_scores():
     )
 
     assert abs(r1 - r2) < 1e-6
+
+
+def test_sanitizer_bonus_and_penalty():
+    agg = RewardAggregator(
+        weights={'compile': 0.1, 'tests': 0.2, 'sanitizer': 0.1},
+        max_edit_penalty=0.0,
+        max_time_penalty=0.0,
+        max_memory_penalty=0.0,
+    )
+
+    clean = agg.compute(
+        compile_success=True,
+        tests_passed=1,
+        tests_total=1,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        sanitizer_clean=True,
+    )
+
+    crash = agg.compute(
+        compile_success=True,
+        tests_passed=1,
+        tests_total=1,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        sanitizer_clean=False,
+    )
+
+    clean2 = agg.compute_from_outputs(
+        compile_success=True,
+        tests_passed=1,
+        tests_total=1,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        sanitizer_output="",
+    )
+
+    crash2 = agg.compute_from_outputs(
+        compile_success=True,
+        tests_passed=1,
+        tests_total=1,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        sanitizer_output="ERROR: AddressSanitizer: heap-buffer-overflow",
+    )
+
+    assert clean > crash
+    assert abs(clean - 0.4) < 1e-6
+    assert abs(crash - 0.2) < 1e-6
+    assert abs(clean - clean2) < 1e-6
+    assert abs(crash - crash2) < 1e-6
