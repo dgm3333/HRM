@@ -3,3 +3,4 @@ sandbox: auto
 timeout: 5
 memory_limit: 256
 cpus: 1
+network: false

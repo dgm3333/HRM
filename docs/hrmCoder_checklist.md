@@ -34,6 +34,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
         - Added helper to instantiate sandbox runners from configuration
+        - Added network access toggle to runner config defaults
     [?] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
     [X] Implement environment pinning and seed/tz/locale normalization module
     [X] Add minimal CMake build helper for C++ harnesses

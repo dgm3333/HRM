@@ -35,13 +35,14 @@ def run_in_sandbox(
     command: List[str],
     config: RunnerConfig,
     *,
-    network: bool = False,
+    network: Optional[bool] = None,
     stdin: Optional[bytes] = None,
 ) -> subprocess.CompletedProcess:
     """Execute ``command`` inside the sandbox described by ``config``."""
 
     runner = create_sandbox_runner(config)
     memory_kb = config.memory_limit * 1024
+    network = config.network if network is None else network
     common_kwargs = dict(
         time_limit=config.timeout,
         wall_time=config.timeout,
