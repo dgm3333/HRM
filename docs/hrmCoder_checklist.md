@@ -31,6 +31,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Define Hydra config schema and default configs under conf/
     [?] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
     [X] Implement environment pinning and seed/tz/locale normalization module
+    [X] Add minimal CMake build helper for C++ harnesses
 
 ** [~] Phase 2: GUI Stub and Backend Skeleton
     [X] Scaffold FastAPI app with /runs, /train, /eval, /logs/ws endpoints
