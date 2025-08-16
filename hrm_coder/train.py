@@ -86,7 +86,14 @@ def main() -> None:
     # Initialise model and trainer.
     model = TinyModel(vocab)
     opt = torch.optim.SGD(model.parameters(), lr=cfg.model.learning_rate)
-    trainer = HRMTrainer(model, opt, HRMTrainingConfig())
+    train_cfg = HRMTrainingConfig(
+        baseline_coef=cfg.training.baseline_coef,
+        entropy_coef=cfg.training.entropy_coef,
+        curriculum_stage=cfg.training.curriculum_stage,
+    )
+    trainer = HRMTrainer(model, opt, train_cfg)
+
+    print(f"curriculum={trainer.config.curriculum_stage}")
 
     if args.resume and args.checkpoint and os.path.exists(args.checkpoint):
         trainer.load_checkpoint(args.checkpoint, map_location="cpu")
@@ -95,6 +102,10 @@ def main() -> None:
     # --- Supervised fine-tuning ---------------------------------------
     avg_loss = trainer.sft_epoch(loader)
     print(f"avg_loss={avg_loss:.4f}")
+
+    # Switch curriculum stage before RL to exercise the toggle logic.
+    trainer.toggle_curriculum()
+    print(f"curriculum={trainer.config.curriculum_stage}")
 
     # --- Reinforcement learning ---------------------------------------
     def reward_fn_factory(target: torch.Tensor):
