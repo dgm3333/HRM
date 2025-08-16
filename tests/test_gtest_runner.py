@@ -1,10 +1,17 @@
 from pathlib import Path
 import sys
 import subprocess
+import shutil
+
+import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from runners.gtest_runner import run_gtests
+from runners.sandbox_cache import SandboxCache
+
+if shutil.which("g++") is None or not Path("/usr/include/gtest/gtest.h").exists():
+    pytest.skip("gtest headers not available", allow_module_level=True)
 
 
 def build_sample_test(tmpdir: Path) -> Path:
@@ -35,3 +42,23 @@ def test_run_gtests(tmp_path):
     assert result["failures"] == 0
     assert result["cases"][0]["name"] == "Adds"
     assert result["cases"][0]["passed"]
+
+
+class SpyRunner:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def run(self, cmd, **kwargs):
+        self.calls += 1
+        return subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+
+def test_run_gtests_cache(tmp_path):
+    binary = build_sample_test(tmp_path)
+    cache = SandboxCache(tmp_path / "cache")
+    spy = SpyRunner()
+    first = run_gtests(binary, sandbox=spy, cache=cache)
+    assert spy.calls == 1
+    second = run_gtests(binary, sandbox=spy, cache=cache)
+    assert spy.calls == 1
+    assert first == second
