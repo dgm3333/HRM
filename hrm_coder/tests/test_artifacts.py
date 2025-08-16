@@ -1,10 +1,19 @@
 from pathlib import Path
 from fastapi.testclient import TestClient
+from itertools import count
 
 from .. import app
+from ..run_registry import registry
+
+
+def _reset_registry():
+    registry._runs.clear()
+    registry._log_queues.clear()
+    registry._id_counter = count(1)
 
 
 def test_artifact_static_server(tmp_path):
+    _reset_registry()
     client = TestClient(app)
     run = client.post('/train', json={}).json()
     run_id = run['id']
@@ -16,6 +25,7 @@ def test_artifact_static_server(tmp_path):
 
 
 def test_artifact_listing(tmp_path):
+    _reset_registry()
     client = TestClient(app)
     run = client.post('/train', json={}).json()
     run_id = run['id']
@@ -27,3 +37,4 @@ def test_artifact_listing(tmp_path):
     files = resp.json()['files']
     assert 'junit.xml' in files
     assert 'coverage/index.html' in files
+    _reset_registry()
