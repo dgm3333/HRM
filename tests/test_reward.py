@@ -189,6 +189,34 @@ def test_compile_diagnostics_penalty():
     assert abs(r - manual) < 1e-6
 
 
+def test_compute_from_outputs_uses_junit():
+    agg = RewardAggregator(
+        weights={'compile': 0.1, 'tests': 0.2},
+        max_edit_penalty=0.0,
+        max_time_penalty=0.0,
+        max_memory_penalty=0.0,
+    )
+    junit = '<testsuite tests="2" failures="1"></testsuite>'
+    r = agg.compute_from_outputs(
+        compile_success=True,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        junit_xml=junit,
+    )
+    manual = agg.compute(
+        compile_success=True,
+        tests_passed=1,
+        tests_total=2,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+    )
+    assert abs(r - manual) < 1e-6
+
+
 def test_sanitizer_bonus_and_penalty():
     agg = RewardAggregator(
         weights={'compile': 0.1, 'tests': 0.2, 'sanitizer': 0.1},

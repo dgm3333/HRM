@@ -10,6 +10,7 @@ from .diagnostics import (
     diagnostics_score,
     sanitizer_clean,
 )
+from .junit import parse_junit_summary
 
 
 @dataclass
@@ -140,12 +141,13 @@ class RewardAggregator:
     def compute_from_outputs(
         self,
         compile_success: bool,
-        tests_passed: int,
-        tests_total: int,
         coverage: float,
         edit_cost: float,
         time_used: float,
         memory_used: float,
+        tests_passed: int | None = None,
+        tests_total: int | None = None,
+        junit_xml: str | None = None,
         clang_output: str = "",
         compiler_stdout: str = "",
         compiler_stderr: str = "",
@@ -163,6 +165,9 @@ class RewardAggregator:
 
         Parameters
         ----------
+        junit_xml:
+            Optional JUnit XML string used to derive ``tests_passed`` and
+            ``tests_total`` when these are not supplied explicitly.
         clang_output:
             Raw stderr/stdout from clang-tidy.
         compiler_stdout:
@@ -190,6 +195,10 @@ class RewardAggregator:
             if sanitizer_output is not None
             else None
         )
+        if junit_xml is not None:
+            tests_passed, tests_total = parse_junit_summary(junit_xml)
+        if tests_passed is None or tests_total is None:
+            raise ValueError("tests_passed/tests_total or junit_xml required")
         return self.compute(
             compile_success=compile_success,
             tests_passed=tests_passed,
