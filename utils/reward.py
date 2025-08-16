@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
 import logging
+import json
+from pathlib import Path
 
 from .diagnostics import (
     clang_tidy_score,
@@ -188,7 +190,9 @@ class RewardAggregator:
         """
 
         lint = clang_tidy_score(clang_output)
-        warnings, errors = compiler_diagnostics(compiler_stdout, compiler_stderr)
+        warnings, errors = compiler_diagnostics(
+            compiler_stdout, compiler_stderr
+        )
         static = cppcheck_score(cppcheck_output)
         san = (
             sanitizer_clean(sanitizer_output)
@@ -215,6 +219,88 @@ class RewardAggregator:
             prev_coverage=prev_coverage,
             time_limit=time_limit,
             memory_limit=memory_limit,
+        )
+
+    def compute_from_dir(
+        self,
+        path: Path,
+        *,
+        meta: Optional[Dict[str, float | int | bool]] = None,
+    ) -> float:
+        """Compute reward by reading standard artifact files from ``path``.
+
+        The directory is expected to contain files named ``junit.xml`` and
+        ``coverage.json`` along with optional logs:
+        ``clang_tidy.log``, ``compile.stdout``, ``compile.stderr``,
+        ``cppcheck.log`` and ``sanitizer.log``.  Additional numeric metadata
+        such as ``edit_cost`` or ``time_used`` can be supplied via the
+        ``meta`` mapping.
+        """
+
+        meta = meta or {}
+
+        junit_xml = None
+        junit_path = path / "junit.xml"
+        if junit_path.exists():
+            junit_xml = junit_path.read_text()
+
+        coverage = 0.0
+        cov_path = path / "coverage.json"
+        if cov_path.exists():
+            try:
+                cov_data = json.loads(cov_path.read_text())
+                coverage = float(
+                    cov_data.get("line")
+                    or cov_data.get("lines")
+                    or cov_data.get("line_percent")
+                    or 0.0
+                )
+            except Exception:
+                coverage = 0.0
+
+        clang_output = (
+            (path / "clang_tidy.log").read_text()
+            if (path / "clang_tidy.log").exists()
+            else ""
+        )
+        compiler_stdout = (
+            (path / "compile.stdout").read_text()
+            if (path / "compile.stdout").exists()
+            else ""
+        )
+        compiler_stderr = (
+            (path / "compile.stderr").read_text()
+            if (path / "compile.stderr").exists()
+            else ""
+        )
+        cppcheck_output = (
+            (path / "cppcheck.log").read_text()
+            if (path / "cppcheck.log").exists()
+            else ""
+        )
+        sanitizer_output = (
+            (path / "sanitizer.log").read_text()
+            if (path / "sanitizer.log").exists()
+            else None
+        )
+
+        return self.compute_from_outputs(
+            compile_success=bool(meta.get("compile_success", True)),
+            tests_passed=meta.get("tests_passed"),
+            tests_total=meta.get("tests_total"),
+            coverage=coverage,
+            edit_cost=float(meta.get("edit_cost", 0.0)),
+            time_used=float(meta.get("time_used", 0.0)),
+            memory_used=float(meta.get("memory_used", 0.0)),
+            junit_xml=junit_xml,
+            clang_output=clang_output,
+            compiler_stdout=compiler_stdout,
+            compiler_stderr=compiler_stderr,
+            cppcheck_output=cppcheck_output,
+            sanitizer_output=sanitizer_output,
+            prev_coverage=meta.get("prev_coverage"),
+            time_limit=meta.get("time_limit"),
+            memory_limit=meta.get("memory_limit"),
         )
 
     def histogram(self, bins: int = 10) -> List[int]:
