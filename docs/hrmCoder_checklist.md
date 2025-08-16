@@ -101,7 +101,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Define edit action space for insert, replace, and delete operations
     [?] Implement cursor policy module for region selection by HRM high-level
     [X] Implement decoder constraint checker to avoid invalid AST states
-    [ ] Add ablation job configs and comparison report against token baseline
+    [~] Add ablation job configs and comparison report against token baseline
 
 ** [ ] Phase 10: C++ Runner and Codeforces Integration (v2)
     [~] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
