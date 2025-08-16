@@ -143,6 +143,7 @@ Stubbed early with mock run objects and static artifact samples.
 * Inventory HRM APIs for code-token/AST edit integration.
 * Compare **isolate** vs **nsjail** vs **gVisor**; choose default + fallbacks.
 * Select toolchain: GCC 13+/Clang 17+, **llvm-cov**; decide sanitizer matrix.
+* Toolchain detection utility (`runners/toolchain_detector.py`) reports available compilers and coverage tools.
 * Dataset curation plan, licenses, and contamination checks.
 * Threat model for native execution; initial sandbox policy.
 * ADRs for sandbox, tracker, GUI stack; risk register.
