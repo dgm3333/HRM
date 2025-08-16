@@ -9,12 +9,13 @@ system.
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 
-class ToolInfo(Dict[str, Optional[str]]):
+class ToolInfo(Dict[str, Any]):
     """Dictionary describing an installed tool.
 
     Keys
@@ -25,6 +26,8 @@ class ToolInfo(Dict[str, Optional[str]]):
         First line of ``--version`` output (``None`` if unavailable).
     path:
         Resolved path to the binary (``None`` if missing).
+    meets_requirement:
+        ``True`` if the parsed version meets the Phase 0 minimum.
     """
 
 
@@ -40,6 +43,29 @@ def _probe_version(cmd: list[str]) -> Optional[str]:
     return line[0] if line else None
 
 
+def _parse_version(line: str) -> Optional[Tuple[int, int]]:
+    """Extract ``(major, minor)`` version tuple from ``line``.
+
+    The function searches for the first ``X.Y`` pattern and returns the
+    corresponding integers.  ``None`` is returned when no version pattern
+    can be found.
+    """
+
+    match = re.search(r"(\d+)\.(\d+)", line)
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+MIN_VERSIONS: Dict[str, Tuple[int, int]] = {
+    "g++": (13, 0),
+    "clang++": (17, 0),
+    "llvm-cov": (17, 0),
+    "gcov": (13, 0),
+    "lcov": (1, 15),
+}
+
+
 def detect_toolchains() -> Dict[str, ToolInfo]:
     """Detect availability of common compiler and coverage utilities."""
     tools = {
@@ -52,11 +78,21 @@ def detect_toolchains() -> Dict[str, ToolInfo]:
     results: Dict[str, ToolInfo] = {}
     for name, cmd in tools.items():
         path = shutil.which(cmd[0])
-        info: ToolInfo = ToolInfo(available=False, version=None, path=None)
+        info: ToolInfo = ToolInfo(
+            available=False,
+            version=None,
+            path=None,
+            meets_requirement=False,
+        )
         if path:
             info["available"] = True
             info["path"] = path
-            info["version"] = _probe_version(cmd)
+            ver = _probe_version(cmd)
+            info["version"] = ver
+            min_ver = MIN_VERSIONS.get(name)
+            parsed = _parse_version(ver) if ver else None
+            if parsed and min_ver:
+                info["meets_requirement"] = parsed >= min_ver
         results[name] = info
     return results
 
@@ -76,7 +112,11 @@ def _select_tool(
         info = detect_toolchains()
     for name in names:
         details = info.get(name)
-        if details and details.get("available"):
+        if (
+            details
+            and details.get("available")
+            and details.get("meets_requirement", True)
+        ):
             return name, details
     return None, None
 
