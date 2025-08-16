@@ -90,9 +90,9 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [ ] Phase 9: AST-Edit Action Space (v2)
     [~] Integrate Tree-sitter C++ grammar and bindings
-    [ ] Implement node type schema and AST embedding encoder for C++
+    [X] Implement node type schema and AST embedding encoder for C++
     [~] Define edit action space for insert, replace, and delete operations
-    [ ] Implement cursor policy module for region selection by HRM high-level
+    [~] Implement cursor policy module for region selection by HRM high-level
     [~] Implement decoder constraint checker to avoid invalid AST states
     [ ] Add ablation job configs and comparison report against token baseline
 
