@@ -54,6 +54,7 @@ def compile_cpp_sources(
     flags: Optional[Iterable[str]] = None,
     sanitize: bool = True,
     static: bool = False,
+    include_dirs: Optional[Iterable[Path]] = None,
     library_dirs: Optional[Iterable[Path]] = None,
     libraries: Optional[Iterable[str]] = None,
     rpath: Optional[Iterable[Path]] = None,
@@ -83,6 +84,9 @@ def compile_cpp_sources(
         Whether to include address and undefined behaviour sanitizers.
     static:
         Request a static build by passing ``-static`` when True.
+    include_dirs:
+        Additional directories to search for headers during compilation
+        (``-I``).
     library_dirs:
         Extra directories to search for libraries during linking (``-L``).
     libraries:
@@ -114,7 +118,12 @@ def compile_cpp_sources(
     if use_ccache and shutil.which("ccache") is not None:
         cmd = ["ccache", compiler]
 
-    cmd += [str(s) for s in sources] + ["-o", str(output_path)] + list(flags)
+    cmd += list(flags)
+    if include_dirs is not None:
+        for d in include_dirs:
+            cmd.extend(["-I", str(d)])
+    cmd += [str(s) for s in sources]
+    cmd += ["-o", str(output_path)]
 
     if library_dirs is not None:
         for d in library_dirs:
@@ -148,6 +157,7 @@ def compile_shared_library(
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
     sanitize: bool = True,
+    include_dirs: Optional[Iterable[Path]] = None,
     use_ccache: bool = False,
 ) -> CompileResult:
     """Compile ``sources`` into a shared library.
@@ -155,7 +165,8 @@ def compile_shared_library(
     This helper produces a ``.so`` suitable for linking against binaries
     compiled with :func:`compile_cpp_sources`.  It mirrors that function's
     support for optional sanitizers and ``ccache`` to encourage deterministic
-    yet repeatable builds.
+    yet repeatable builds.  ``include_dirs`` provides extra header search paths
+    via ``-I`` options.
     """
 
     if flags is None:
@@ -178,7 +189,12 @@ def compile_shared_library(
     if use_ccache and shutil.which("ccache") is not None:
         cmd = ["ccache", compiler]
 
-    cmd += [str(s) for s in sources] + ["-o", str(output_path)] + list(flags)
+    cmd += list(flags)
+    if include_dirs is not None:
+        for d in include_dirs:
+            cmd.extend(["-I", str(d)])
+    cmd += [str(s) for s in sources]
+    cmd += ["-o", str(output_path)]
 
     proc = subprocess.run(
         cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
@@ -202,6 +218,7 @@ def compile_static_library(
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
     sanitize: bool = True,
+    include_dirs: Optional[Iterable[Path]] = None,
     use_ccache: bool = False,
 ) -> CompileResult:
     """Compile ``sources`` into a static ``.a`` library.
@@ -209,7 +226,8 @@ def compile_static_library(
     This helper builds each source into an object file and archives them
     together using ``ar``.  It mirrors :func:`compile_shared_library` so that
     Phase 10 experiments can easily link against lightweight library stubs
-    without relying on dynamic libraries.
+    without relying on dynamic libraries.  ``include_dirs`` supplies additional
+    header search paths for the compilation stage.
     """
 
     if flags is None:
@@ -238,7 +256,11 @@ def compile_static_library(
         cmd: List[str] = [compiler]
         if use_ccache and shutil.which("ccache") is not None:
             cmd = ["ccache", compiler]
-        cmd += [str(src), "-c", "-o", str(obj_path)] + list(flags)
+        cmd += list(flags)
+        if include_dirs is not None:
+            for d in include_dirs:
+                cmd.extend(["-I", str(d)])
+        cmd += [str(src), "-c", "-o", str(obj_path)]
         proc = subprocess.run(
             cmd,
             capture_output=True,
@@ -290,6 +312,7 @@ def compile_cpp(
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
     sanitize: bool = True,
+    include_dirs: Optional[Iterable[Path]] = None,
 ) -> CompileResult:
     """Compile a single C++ ``source`` file.
 
@@ -304,6 +327,7 @@ def compile_cpp(
         compiler=compiler,
         flags=flags,
         sanitize=sanitize,
+        include_dirs=include_dirs,
     )
 
 
@@ -363,21 +387,8 @@ def run_binary(
 
     if sandbox is not None:
         memory_kb = (memory_limit or 256 * 1024 * 1024) // 1024
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                proc = sandbox.run(
-                    [str(binary)],
-                    time_limit=int(timeout),
-                    wall_time=int(timeout),
-                    memory=memory_kb,
-                    stdin=input_data,
-                    workdir=tmpdir,
-                    readonly_dirs=[str(cwd)],
-                    env=env,
-                    stdout_limit=stdout_limit,
-                    stderr_limit=stderr_limit,
-                )
-            except TypeError:
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
                 try:
                     proc = sandbox.run(
                         [str(binary)],
@@ -385,20 +396,34 @@ def run_binary(
                         wall_time=int(timeout),
                         memory=memory_kb,
                         stdin=input_data,
+                        workdir=tmpdir,
+                        readonly_dirs=[str(cwd)],
                         env=env,
                         stdout_limit=stdout_limit,
                         stderr_limit=stderr_limit,
                     )
                 except TypeError:
-                    proc = sandbox.run(
-                        [str(binary)],
-                        time_limit=int(timeout),
-                        wall_time=int(timeout),
-                        memory=memory_kb,
-                        stdin=input_data,
-                        stdout_limit=stdout_limit,
-                        stderr_limit=stderr_limit,
-                    )
+                    try:
+                        proc = sandbox.run(
+                            [str(binary)],
+                            time_limit=int(timeout),
+                            wall_time=int(timeout),
+                            memory=memory_kb,
+                            stdin=input_data,
+                            env=env,
+                            stdout_limit=stdout_limit,
+                            stderr_limit=stderr_limit,
+                        )
+                    except TypeError:
+                        proc = sandbox.run(
+                            [str(binary)],
+                            time_limit=int(timeout),
+                            wall_time=int(timeout),
+                            memory=memory_kb,
+                            stdin=input_data,
+                            stdout_limit=stdout_limit,
+                            stderr_limit=stderr_limit,
+                        )
         except SandboxError as exc:
             return -1, "", str(exc)
         return proc.returncode, proc.stdout, proc.stderr
@@ -482,6 +507,7 @@ def run_codeforces_tests(
     timeout: float = 2.0,
     memory_limit: Optional[int] = None,
     static: bool = False,
+    include_dirs: Optional[Iterable[Path]] = None,
     library_dirs: Optional[Iterable[Path]] = None,
     libraries: Optional[Iterable[str]] = None,
     rpath: Optional[Iterable[Path]] = None,
@@ -507,6 +533,9 @@ def run_codeforces_tests(
 
     Parameters
     ----------
+    include_dirs:
+        Additional directories to search for headers when compiling the main
+        sources.
     stdout_limit, stderr_limit:
         Optional maximum sizes for captured stdout and stderr from each test
         case. Limits are forwarded to the sandbox runner or applied locally
@@ -564,6 +593,7 @@ def run_codeforces_tests(
                     compiler=compiler,
                     flags=compile_flags,
                     sanitize=sanitize,
+                    include_dirs=include_dirs,
                     use_ccache=use_ccache,
                 )
                 stdout_parts.append(res.stdout)
@@ -596,6 +626,7 @@ def run_codeforces_tests(
                     compiler=compiler,
                     flags=compile_flags,
                     sanitize=sanitize,
+                    include_dirs=include_dirs,
                     use_ccache=use_ccache,
                 )
                 stdout_parts.append(res.stdout)
@@ -637,6 +668,7 @@ def run_codeforces_tests(
             flags=compile_flags,
             sanitize=sanitize,
             static=static,
+            include_dirs=include_dirs,
             library_dirs=library_dirs,
             libraries=libraries,
             rpath=rpath,

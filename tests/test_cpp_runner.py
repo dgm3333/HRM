@@ -43,6 +43,29 @@ int main() { std::cout << add(1, 2); }
     assert stdout.strip() == "3"
 
 
+def test_compile_with_include_dir(tmp_path: Path) -> None:
+    """Compile sources that include headers from a separate directory."""
+    inc = tmp_path / "inc"
+    inc.mkdir()
+    (inc / "util.h").write_text("int add(int, int);\n")
+    helper = tmp_path / "util.cpp"
+    helper.write_text("int add(int a,int b){return a+b;}\n")
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include "util.h"
+#include <iostream>
+int main(){std::cout<<add(2,3);}
+""",
+    )
+
+    res = compile_cpp_sources([main, helper], include_dirs=[inc])
+    assert res.success and res.binary is not None
+    code, stdout, stderr = run_binary(res.binary)
+    assert code == 0
+    assert stdout.strip() == "5"
+
+
 def test_shared_library_link(tmp_path: Path) -> None:
     """Build a shared library and link it into a main program."""
     lib_src = tmp_path / "double.cpp"
@@ -337,6 +360,30 @@ int main(){int x; if(!(std::cin>>x)) return 0; std::cout<<times_two(x);}
     res = run_codeforces_tests(
         [main], tests_dir, shared_libs={"double": [lib_src]}
     )
+    assert res["results"][0]["passed"]
+
+
+def test_run_codeforces_tests_include_dirs(tmp_path: Path) -> None:
+    """Use run_codeforces_tests with extra header search paths."""
+    inc = tmp_path / "inc"
+    inc.mkdir()
+    (inc / "math.h").write_text("int add(int,int);\n")
+    helper = tmp_path / "math.cpp"
+    helper.write_text("int add(int a,int b){return a+b;}\n")
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include "math.h"
+#include <iostream>
+int main(){int a,b; if(!(std::cin>>a>>b)) return 0; std::cout<<add(a,b);}
+""",
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("1 2\n")
+    (tests_dir / "a.out").write_text("3\n")
+
+    res = run_codeforces_tests([main, helper], tests_dir, include_dirs=[inc])
     assert res["results"][0]["passed"]
 
 
