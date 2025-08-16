@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Jobs</title>
+</head>
+<body>
+  <h1>Jobs</h1>
+  <table id="jobs" border="1">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">ID</th>
+        <th onclick="sortTable(1)">Status</th>
+        <th>Artifact</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    async function load() {
+      const resp = await fetch('/runs');
+      const runs = await resp.json();
+      const tbody = document.querySelector('#jobs tbody');
+      tbody.innerHTML = '';
+      for (const r of runs) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.id}</td><td>${r.status}</td><td>${r.artifact ? `<a href="${r.artifact}">link</a>` : ''}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+    function sortTable(col) {
+      const tbody = document.querySelector('#jobs tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a,b)=>a.children[col].innerText.localeCompare(b.children[col].innerText));
+      rows.forEach(r=>tbody.appendChild(r));
+    }
+    load();
+  </script>
+</body>
+</html>
