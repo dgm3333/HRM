@@ -47,8 +47,8 @@ Save new code files in: C:\repos\hrm-coder
     [~] Implement AtCoder ABC subset builder with normalized input/output cases
     [X] Write determinism validator to re-run and hash equality of artifacts
     [ ] Integrate DVC pipelines and data/versions.yml locking
-    [~] Add dataset schema contracts and unit tests for loaders
-    [~] Implement dataset split manager for train/val/test with fixed seeds
+    [X] Add dataset schema contracts and unit tests for loaders
+    [X] Implement dataset split manager for train/val/test with fixed seeds
 
 ** [ ] Phase 4: Sandbox Executor
     [~] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
