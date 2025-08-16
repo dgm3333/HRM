@@ -9,3 +9,5 @@ wandb
 omegaconf
 hydra-core
 huggingface_hub
+tree_sitter
+tree_sitter_languages
