@@ -51,6 +51,12 @@ class RunRegistry:
         if run_id in self._runs:
             self._runs[run_id].status = status
 
+    def delete_run(self, run_id: int) -> bool:
+        """Remove a run and its log queue."""
+        removed = self._runs.pop(run_id, None)
+        self._log_queues.pop(run_id, None)
+        return removed is not None
+
     # Logging helpers -------------------------------------------------
 
     def append_log(self, run_id: int, message: str) -> None:
