@@ -10,6 +10,7 @@ CI can run it within tight runtime budgets.
 
 from dataclasses import asdict
 import argparse
+import os
 from pprint import pformat
 
 import torch
@@ -42,6 +43,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0, help="PRNG seed")
     parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default=None,
+        help="Path to save/load a checkpoint",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from --checkpoint if it exists",
+    )
+    parser.add_argument(
         "overrides",
         nargs="*",
         help="Hydra-style overrides, e.g. model.learning_rate=1e-4",
@@ -60,12 +72,18 @@ def main() -> None:
     inputs = torch.eye(vocab)[:5]
     targets = torch.arange(5) % vocab
     dataset = TensorDataset(inputs, targets)
-    loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    g = torch.Generator()
+    g.manual_seed(args.seed)
+    loader = DataLoader(dataset, batch_size=1, shuffle=True, generator=g)
 
     # Initialise model and trainer.
     model = TinyModel(vocab)
     opt = torch.optim.SGD(model.parameters(), lr=cfg.model.learning_rate)
     trainer = HRMTrainer(model, opt, HRMTrainingConfig())
+
+    if args.resume and args.checkpoint and os.path.exists(args.checkpoint):
+        trainer.load_checkpoint(args.checkpoint, map_location="cpu")
+        print(f"Resumed from {args.checkpoint}")
 
     # --- Supervised fine-tuning ---------------------------------------
     avg_loss = trainer.sft_epoch(loader)
@@ -74,18 +92,31 @@ def main() -> None:
     # --- Reinforcement learning ---------------------------------------
     def reward_fn_factory(target: torch.Tensor):
         def reward_fn(actions: torch.Tensor) -> torch.Tensor:
-            return torch.where(actions == target, torch.tensor(1.0), torch.tensor(0.0))
+            return torch.where(
+                actions == target, torch.tensor(1.0), torch.tensor(0.0)
+            )
 
         return reward_fn
 
-    rl_stats = {"policy_loss": 0.0, "value_loss": 0.0, "entropy": 0.0, "reward": 0.0}
+    rl_stats = {
+        "policy_loss": 0.0,
+        "value_loss": 0.0,
+        "entropy": 0.0,
+        "reward": 0.0,
+    }
     for inp, target in dataset:
-        stats = trainer.reinforce_step(inp.unsqueeze(0), reward_fn_factory(target))
+        stats = trainer.reinforce_step(
+            inp.unsqueeze(0), reward_fn_factory(target)
+        )
         for k, v in stats.items():
             rl_stats[k] += v
     for k in rl_stats:
         rl_stats[k] /= len(dataset)
     print("reinforce:", " ".join(f"{k}={v:.4f}" for k, v in rl_stats.items()))
+
+    if args.checkpoint:
+        trainer.save_checkpoint(args.checkpoint)
+        print(f"Checkpoint written to {args.checkpoint}")
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
