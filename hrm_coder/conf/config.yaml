@@ -2,4 +2,5 @@ defaults:
   - dataset: humaneval_cpp
   - model: small
   - runner: default
+  - acceptance: default
   - _self_

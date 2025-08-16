@@ -1,0 +1,4 @@
+pass_at_1: 0.5
+pass_at_10: 0.7
+max_timeout_rate: 0.05
+max_sanitizer_failures: 0
