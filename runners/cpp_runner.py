@@ -19,7 +19,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
-from .error_taxonomy import classify_compile, classify_runtime
+from .error_taxonomy import classify_compile
+from .io_judge import run_io_tests
 from .isolate import IsolateRunner, SandboxError
 from .sandbox_cache import SandboxCache
 from utils.diagnostics import compiler_diagnostics
@@ -333,7 +334,6 @@ def run_codeforces_tests(
     compile_status = classify_compile(
         compile_res.success, compile_res.stderr
     )
-    results = []
     if not compile_res.success or compile_res.binary is None:
         data = {
             "compile_stdout": compile_res.stdout,
@@ -341,49 +341,27 @@ def run_codeforces_tests(
             "compile_warnings": compile_res.warnings,
             "compile_errors": compile_res.errors,
             "compile_status": compile_status,
-            "results": results,
+            "results": [],
         }
         if cache is not None and key is not None:
             cache.store(key, data)
         return data
 
-    for input_file in sorted(Path(tests_dir).glob("*.in")):
-        test_name = input_file.stem
-        expected_file = input_file.with_suffix(".out")
-        input_data = input_file.read_text()
-        expected = expected_file.read_text() if expected_file.exists() else ""
-        try:
-            code, stdout, stderr = run_binary(
-                compile_res.binary,
-                input_data=input_data,
-                timeout=timeout,
-                memory_limit=memory_limit,
-                env=env,
-                sandbox=sandbox,
-            )
-            timed_out = False
-        except subprocess.TimeoutExpired:
-            code, stdout, stderr = -1, "", "TIMEOUT"
-            timed_out = True
-        error_type = classify_runtime(code, stderr, timed_out=timed_out)
-        passed = stdout.strip() == expected.strip() and code == 0
-        results.append(
-            {
-                "test": test_name,
-                "passed": passed,
-                "stdout": stdout,
-                "stderr": stderr,
-                "error_type": error_type,
-            }
-        )
-
+    run_res = run_io_tests(
+        compile_res.binary,
+        tests_dir,
+        timeout=timeout,
+        memory_limit=memory_limit,
+        env=env,
+        sandbox=sandbox,
+    )
     data = {
         "compile_stdout": compile_res.stdout,
         "compile_stderr": compile_res.stderr,
         "compile_warnings": compile_res.warnings,
         "compile_errors": compile_res.errors,
         "compile_status": compile_status,
-        "results": results,
+        "results": run_res["results"],
     }
     if cache is not None and key is not None:
         cache.store(key, data)
