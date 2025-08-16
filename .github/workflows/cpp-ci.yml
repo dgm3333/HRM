@@ -42,7 +42,7 @@ jobs:
         run: |
           if [ -d build ]; then
             lcov --capture --directory build --output-file coverage.info
-            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info --ignore-errors unused
             genhtml coverage.info --output-directory coverage_html
           else
             echo "No coverage generated."
@@ -68,14 +68,25 @@ jobs:
           python-version: '3.10'
 
       - name: Install Python dependencies
-        run: pip install torch
+        run: pip install torch mlflow
 
       - name: Smoke evaluation
+        id: smoke-eval
         run: |
           python scripts/smoke_eval.py > smoke_eval.log
 
       - name: Upload smoke evaluation log
+        if: ${{ steps.smoke-eval.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: smoke-eval
           path: smoke_eval.log
+
+      - name: Upload smoke evaluation artifacts
+        if: ${{ steps.smoke-eval.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-eval-mlflow
+          path: |
+            mlruns
+            smoke_eval_summary.json

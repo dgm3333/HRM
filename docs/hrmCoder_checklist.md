@@ -17,8 +17,10 @@ Save new code files in: C:\repos\hrm-coder
     [~] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
         - Added sandbox detection utility for isolate, nsjail, and gVisor runsc runtime
         - Added default sandbox selection helper to prefer isolate and fall back to nsjail or runsc
+        - Integrated sandbox auto-selection into runner configuration
         - Added toolchain detection utility for g++, clang++, lcov, llvm-cov, and gcov
     [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
+        - Added dataset catalog utility with hash validation and unit tests
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
     [~] Draft sandbox Threat Model and initial security requirements for native binaries
     [~] Write ADRs for sandbox choice, experiment tracker, and GUI stack
@@ -31,6 +33,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
     [~] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
+        - Added helper to instantiate sandbox runners from configuration
     [?] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
     [X] Implement environment pinning and seed/tz/locale normalization module
     [X] Add minimal CMake build helper for C++ harnesses
@@ -46,9 +49,10 @@ Save new code files in: C:\repos\hrm-coder
     [X] Expose coverage summary endpoint and display on run page
 
 ** [ ] Phase 3: Deterministic Dataset Pipeline (C++)
-    [~] Implement HumanEval-CPP builder with harness generator and reference solutions
-    [~] Implement Codeforces-Intro builder (I/O testcases, constraints, per-problem time limits)
-    [~] Implement AtCoder ABC subset builder with normalized input/output cases
+    [X] Implement HumanEval-CPP builder with harness generator and reference solutions
+    [X] Implement Codeforces-Intro builder (I/O testcases, constraints, per-problem time limits)
+    [X] Implement AtCoder ABC subset builder with normalized input/output cases
+    [X] Implement Kattis micro-set builder for additional I/O tasks
     [X] Write determinism validator to re-run and hash equality of artifacts
     [~] Integrate DVC pipelines and data/versions.yml locking
     [X] Add dataset schema contracts and unit tests for loaders
@@ -91,11 +95,11 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [ ] Phase 8: CI/CD and Automation
     [X] Create GitHub Actions workflow for C++ lint (clang-tidy/clang-format) and unit tests on PRs
-    [?] Create CI smoke evaluation job on sample subset with artifacts (ctest + lcov upload)
-    [~] Create nightly full evaluation job with retention and tagging
+    [X] Create CI smoke evaluation job on sample subset with artifacts (ctest + lcov upload)
+    [?] Create nightly full evaluation job with retention and tagging
     [X] Implement version stamping (git SHA, Docker digest, seeds) in runs
     [X] Configure GitHub Pages publish for latest report artifacts
-    [~] Bootstrap MLflow or W\&B project with tags and run summaries
+    [?] Bootstrap MLflow or W\&B project with tags and run summaries
 
 ** [ ] Phase 9: AST-Edit Action Space (v2)
     [X] Integrate Tree-sitter C++ grammar and bindings
@@ -108,7 +112,7 @@ Save new code files in: C:\repos\hrm-coder
 ** [ ] Phase 10: C++ Runner and Codeforces Integration (v2)
     [~] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
     [~] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
-    [~] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
+    [?] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
     [~] Configure static versus dynamic linking inside jail with rpath handling and ccache
     [ ] Create C++ security test suite for resource abuse and restricted syscalls
     [ ] Integrate C++ metrics and outcomes into common evaluator and reports

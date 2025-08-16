@@ -5,9 +5,11 @@ This script trains a tiny model on synthetic data and reports accuracy.
 It is intended for CI smoke tests to exercise the evaluation path.
 """
 
+import json
 import pathlib
 import sys
 
+import mlflow
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -67,6 +69,16 @@ def main() -> None:
     acc = correct / len(dataset)
     print(f"accuracy={acc:.2f}")
     log_metrics({"accuracy": acc})
+
+    # Record run metadata for CI artifacts
+    active = mlflow.active_run()
+    summary = {
+        "run_id": active.info.run_id if active else None,
+        "accuracy": acc,
+    }
+    with open("smoke_eval_summary.json", "w", encoding="utf-8") as fh:
+        json.dump(summary, fh)
+
     end_run()
 
 

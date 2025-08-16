@@ -7,10 +7,11 @@ written to ``docs/dataset_catalog.json`` to support Phase 0 tracking.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List
 
 DATASETS = [
     {"name": "Codeforces-Intro", "path": Path("dataset/raw-data/codeforces_intro"), "license": "TBD"},
@@ -54,11 +55,39 @@ def build_catalog() -> List[Dict[str, Any]]:
     return catalog
 
 
+def validate_catalog(catalog: Iterable[Dict[str, Any]]) -> List[str]:
+    """Return names of datasets with missing files or mismatched hashes."""
+    problems: List[str] = []
+    for entry in catalog:
+        path = Path(entry["path"])
+        expected = entry.get("sha256")
+        actual = sha256_of_path(path)
+        if actual is None or (expected not in {actual, "TBD"}):
+            problems.append(entry["name"])
+    return problems
+
+
 def main() -> None:
-    catalog = build_catalog()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="validate existing catalog instead of rebuilding",
+    )
+    args = parser.parse_args()
+
     out_path = Path("docs/dataset_catalog.json")
-    out_path.write_text(json.dumps(catalog, indent=2) + "\n")
-    print(f"Wrote {out_path}")
+    if args.check:
+        catalog = json.loads(out_path.read_text())
+        problems = validate_catalog(catalog)
+        if problems:
+            print("Missing or mismatched datasets:", ", ".join(problems))
+            raise SystemExit(1)
+        print("Catalog OK")
+    else:
+        catalog = build_catalog()
+        out_path.write_text(json.dumps(catalog, indent=2) + "\n")
+        print(f"Wrote {out_path}")
 
 
 if __name__ == "__main__":

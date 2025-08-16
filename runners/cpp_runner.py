@@ -11,6 +11,7 @@ counts, advancing the Phase 10 goal of richer feedback from the build step.
 from __future__ import annotations
 
 import os
+import json
 import resource
 import shutil
 import subprocess
@@ -320,8 +321,8 @@ def run_binary(
     env: Optional[Mapping[str, str]] = None,
     sandbox: Optional[IsolateRunner] = None,
     cwd: Optional[Path] = None,
-    stdout_limit: int = 10_000,
-    stderr_limit: int = 10_000,
+    stdout_limit: Optional[int] = None,
+    stderr_limit: Optional[int] = None,
 ) -> Tuple[int, str, str]:
     """Execute a compiled ``binary`` with optional limits and environment.
 
@@ -352,8 +353,9 @@ def run_binary(
         ``binary`` so that coverage artifacts are written alongside the
         executable.
     stdout_limit, stderr_limit:
-        Maximum number of characters captured from ``stdout`` and ``stderr``
-        when executing inside the sandbox.
+        Optional maximum sizes for captured stdout and stderr.  When a
+        sandbox runner is used the limits are forwarded to it.  Otherwise the
+        captured output is truncated locally.
     """
 
     if cwd is None:
@@ -375,9 +377,31 @@ def run_binary(
                     stdout_limit=stdout_limit,
                     stderr_limit=stderr_limit,
                 )
-            except SandboxError as exc:
-                return -1, "", str(exc)
-            return proc.returncode, proc.stdout, proc.stderr
+            except TypeError:
+                try:
+                    proc = sandbox.run(
+                        [str(binary)],
+                        time_limit=int(timeout),
+                        wall_time=int(timeout),
+                        memory=memory_kb,
+                        stdin=input_data,
+                        env=env,
+                        stdout_limit=stdout_limit,
+                        stderr_limit=stderr_limit,
+                    )
+                except TypeError:
+                    proc = sandbox.run(
+                        [str(binary)],
+                        time_limit=int(timeout),
+                        wall_time=int(timeout),
+                        memory=memory_kb,
+                        stdin=input_data,
+                        stdout_limit=stdout_limit,
+                        stderr_limit=stderr_limit,
+                    )
+        except SandboxError as exc:
+            return -1, "", str(exc)
+        return proc.returncode, proc.stdout, proc.stderr
 
     def preexec() -> None:
         _set_limits(memory_limit)
@@ -394,7 +418,13 @@ def run_binary(
         env={**os.environ, **env} if env is not None else None,
         cwd=str(cwd),
     )
-    return proc.returncode, proc.stdout, proc.stderr
+    stdout = proc.stdout
+    stderr = proc.stderr
+    if stdout_limit is not None:
+        stdout = stdout[:stdout_limit]
+    if stderr_limit is not None:
+        stderr = stderr[:stderr_limit]
+    return proc.returncode, stdout, stderr
 
 
 def _parse_gcov_file(path: Path) -> float:
@@ -459,6 +489,8 @@ def run_codeforces_tests(
     env: Optional[Mapping[str, str]] = None,
     sandbox: Optional[IsolateRunner] = None,
     cache: Optional[SandboxCache] = None,
+    stdout_limit: Optional[int] = None,
+    stderr_limit: Optional[int] = None,
     collect_coverage: bool = False,
     shared_libs: Optional[Mapping[str, Sequence[Path]]] = None,
     static_libs: Optional[Mapping[str, Sequence[Path]]] = None,
@@ -472,6 +504,13 @@ def run_codeforces_tests(
     with error classifications. When ``collect_coverage`` is ``True`` the
     program is instrumented with ``--coverage`` and ``gcov`` is used to compute
     a line coverage ratio.
+
+    Parameters
+    ----------
+    stdout_limit, stderr_limit:
+        Optional maximum sizes for captured stdout and stderr from each test
+        case. Limits are forwarded to the sandbox runner or applied locally
+        when no sandbox is used.
     """
 
     key: Optional[str] = None
@@ -491,6 +530,10 @@ def run_codeforces_tests(
         parts.append(str(timeout).encode())
         if memory_limit is not None:
             parts.append(str(memory_limit).encode())
+        if stdout_limit is not None:
+            parts.append(f"out{stdout_limit}".encode())
+        if stderr_limit is not None:
+            parts.append(f"err{stderr_limit}".encode())
         if collect_coverage:
             parts.append(b"coverage")
         key = cache.hash_parts(parts)
@@ -626,6 +669,8 @@ def run_codeforces_tests(
             memory_limit=memory_limit,
             env=env,
             sandbox=sandbox,
+            stdout_limit=stdout_limit,
+            stderr_limit=stderr_limit,
         )
         coverage_ratio = 0.0
         if collect_coverage:
@@ -645,3 +690,38 @@ def run_codeforces_tests(
         if cache is not None and key is not None:
             cache.store(key, data)
         return data
+
+
+def run_codeforces_task(
+    sources: Sequence[Path],
+    task_dir: Path,
+    **kwargs,
+) -> dict:
+    """Compile ``sources`` and run them against a Codeforces task directory.
+
+    The ``task_dir`` is expected to contain a ``tests`` subdirectory with
+    ``*.in``/``*.out`` pairs and a ``meta.json`` file providing time and memory
+    limits.  The limits are forwarded to :func:`run_codeforces_tests` unless
+    explicitly overridden via ``kwargs``.
+    """
+
+    meta_path = task_dir / "meta.json"
+    timeout = None
+    memory_limit = None
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text())
+            timeout = meta.get("time_limit_ms", 2000) / 1000.0
+            memory_limit = meta.get("memory_limit_kb", 256_000) * 1024
+        except Exception:
+            timeout = None
+            memory_limit = None
+
+    params = dict(kwargs)
+    if timeout is not None:
+        params.setdefault("timeout", timeout)
+    if memory_limit is not None:
+        params.setdefault("memory_limit", memory_limit)
+
+    tests_dir = task_dir / "tests"
+    return run_codeforces_tests(sources, tests_dir, **params)

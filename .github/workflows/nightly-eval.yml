@@ -32,7 +32,7 @@ jobs:
         run: |
           if [ -d build ]; then
             lcov --capture --directory build --output-file coverage.info
-            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info --ignore-errors unused
             genhtml coverage.info --output-directory coverage_html
           else
             echo "No coverage generated."
@@ -60,17 +60,29 @@ jobs:
           python-version: '3.10'
 
       - name: Install Python dependencies
-        run: pip install torch
+        run: pip install torch mlflow
 
       - name: Full evaluation
+        id: full-eval
         run: |
           python scripts/smoke_eval.py > full_eval.log
 
       - name: Upload evaluation log
+        if: ${{ steps.full-eval.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: nightly-full-eval
           path: full_eval.log
+          retention-days: 7
+
+      - name: Upload evaluation artifacts
+        if: ${{ steps.full-eval.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-mlflow
+          path: |
+            mlruns
+            smoke_eval_summary.json
           retention-days: 7
 
       - name: Tag nightly run

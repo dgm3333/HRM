@@ -15,6 +15,7 @@ from typing import Callable, Dict
 from .build_atcoder_abc_dataset import build_dataset as build_atcoder
 from .build_codeforces_intro_dataset import build_dataset as build_codeforces
 from .build_humaneval_cpp_dataset import build_dataset as build_humaneval
+from .build_kattis_micro_dataset import build_dataset as build_kattis
 from .determinism import validate_build_determinism
 
 # Map human-friendly dataset names to their builder functions.
@@ -22,6 +23,7 @@ BUILDERS: Dict[str, Callable[[str, str, int, str | None], None]] = {
     "HumanEval-CPP": build_humaneval,
     "Codeforces-Intro": build_codeforces,
     "AtCoder-ABC": build_atcoder,
+    "Kattis-micro": build_kattis,
 }
 
 
@@ -38,17 +40,18 @@ def build_from_catalog(
     Parameters
     ----------
     catalog_path:
-        Path to a JSON file following the format of ``docs/dataset_catalog.json``.
+        Path to a JSON file following the format of
+        ``docs/dataset_catalog.json``.
     output_root:
-        Directory where processed datasets will be written. One subdirectory per
-        dataset name is created.
+        Directory where processed datasets will be written. One
+        subdirectory per dataset name is created.
     versions_file:
         Path to ``versions.yml`` where dataset hashes are recorded.
     seed:
         Random seed forwarded to each builder.
     check_determinism:
-        If ``True``, the builder is run twice in temporary directories to
-        confirm deterministic outputs before writing to ``output_root``.
+        If ``True``, the builder is run twice in temporary directories
+        to confirm deterministic outputs before writing to ``output_root``.
     """
 
     catalog = json.loads(Path(catalog_path).read_text())
@@ -71,7 +74,12 @@ def build_from_catalog(
                 lambda rp, od, sd: build_fn(rp, od, sd), raw_path, seed=seed
             )
 
-        build_fn(raw_path, str(dataset_dir), seed=seed, versions_path=versions_file)
+        build_fn(
+            raw_path,
+            str(dataset_dir),
+            seed=seed,
+            versions_path=versions_file,
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI wrapper
@@ -85,11 +93,17 @@ if __name__ == "__main__":  # pragma: no cover - CLI wrapper
         "output_root", help="Directory to write processed datasets into"
     )
     parser.add_argument(
-        "--versions", required=True, help="Path to versions.yml for hash locking"
+        "--versions",
+        required=True,
+        help="Path to versions.yml for hash locking",
     )
-    parser.add_argument("--seed", type=int, default=0, help="Random seed for splits")
     parser.add_argument(
-        "--no-check", action="store_true", help="Skip deterministic build check"
+        "--seed", type=int, default=0, help="Random seed for splits"
+    )
+    parser.add_argument(
+        "--no-check",
+        action="store_true",
+        help="Skip deterministic build check",
     )
 
     args = parser.parse_args()
@@ -101,4 +115,3 @@ if __name__ == "__main__":  # pragma: no cover - CLI wrapper
         seed=args.seed,
         check_determinism=not args.no_check,
     )
-

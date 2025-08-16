@@ -1,5 +1,5 @@
 compiler: g++
-sandbox: nsjail
+sandbox: auto
 timeout: 5
 memory_limit: 256
 cpus: 1

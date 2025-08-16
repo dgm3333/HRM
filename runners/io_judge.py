@@ -30,6 +30,8 @@ def run_io_tests(
     env: Optional[Mapping[str, str]] = None,
     sandbox: Optional[IsolateRunner] = None,
     cache: Optional[SandboxCache] = None,
+    stdout_limit: Optional[int] = None,
+    stderr_limit: Optional[int] = None,
 ) -> Dict[str, object]:
     """Run ``binary`` against I/O testcases in ``tests_dir``.
 
@@ -49,6 +51,10 @@ def run_io_tests(
         Optional :class:`IsolateRunner` enforcing resource limits.
     cache:
         Optional :class:`SandboxCache` to memoize results.
+    stdout_limit, stderr_limit:
+        Optional maximum sizes for captured stdout and stderr per test case.
+        When provided these limits are forwarded to the sandbox runner or
+        applied locally to the captured output.
 
     Returns
     -------
@@ -61,6 +67,10 @@ def run_io_tests(
         parts: List[bytes] = [binary.read_bytes(), str(timeout).encode()]
         if memory_limit is not None:
             parts.append(str(memory_limit).encode())
+        if stdout_limit is not None:
+            parts.append(f"out{stdout_limit}".encode())
+        if stderr_limit is not None:
+            parts.append(f"err{stderr_limit}".encode())
         for f in sorted(Path(tests_dir).glob("*")):
             if f.is_file():
                 parts.append(f.read_bytes())
@@ -83,6 +93,8 @@ def run_io_tests(
                 memory_limit=memory_limit,
                 env=env,
                 sandbox=sandbox,
+                stdout_limit=stdout_limit,
+                stderr_limit=stderr_limit,
             )
             timed_out = False
         except subprocess.TimeoutExpired:
