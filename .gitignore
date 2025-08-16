@@ -5,7 +5,8 @@
 # cache
 /cache/
 # data
-/data/
+/data/*
+!/data/versions.yml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
