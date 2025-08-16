@@ -59,14 +59,6 @@ class RunRegistry:
             self._log_queues[run_id].put_nowait(message)
 
     def get_logs(self, run_id: int) -> List[str]:
-        """Return existing log lines for ``run_id``.
-
-        ``dict.get`` eagerly evaluates its default argument, which caused a
-        ``Run`` to be instantiated without required fields whenever a run was
-        present in the registry. That surfaced as a validation error during
-        WebSocket connections. We avoid that by looking up the run explicitly
-        and creating a minimal placeholder only when it is truly missing.
-        """
         run = self._runs.get(run_id)
         if run is None:
             run = Run(id=run_id, version=collect_version_info())

@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install clang tools
-        run: sudo apt-get update && sudo apt-get install -y clang-format clang-tidy cmake build-essential
+        run: sudo apt-get update && sudo apt-get install -y clang-format clang-tidy cmake build-essential lcov
 
       - name: C++ lint
         run: |
@@ -25,12 +25,32 @@ jobs:
           fi
 
       - name: Build and test
+        id: build-test
         run: |
           if [ -f CMakeLists.txt ]; then
             mkdir build && cd build
-            cmake ..
+            cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_EXE_LINKER_FLAGS="--coverage" ..
             make
             ctest --output-on-failure
+            cd ..
           else
             echo "No C++ tests found."
           fi
+
+      - name: Collect coverage
+        if: ${{ steps.build-test.outcome == 'success' }}
+        run: |
+          if [ -d build ]; then
+            lcov --capture --directory build --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+            genhtml coverage.info --output-directory coverage_html
+          else
+            echo "No coverage generated."
+          fi
+
+      - name: Upload coverage
+        if: ${{ steps.build-test.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-coverage
+          path: coverage_html
