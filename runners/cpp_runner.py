@@ -190,6 +190,82 @@ def compile_shared_library(
     )
 
 
+def compile_static_library(
+    sources: Sequence[Path],
+    output: Optional[Path] = None,
+    *,
+    compiler: str = "g++",
+    flags: Optional[Iterable[str]] = None,
+    sanitize: bool = True,
+    use_ccache: bool = False,
+) -> CompileResult:
+    """Compile ``sources`` into a static ``.a`` library.
+
+    This helper builds each source into an object file and archives them
+    together using ``ar``.  It mirrors :func:`compile_shared_library` so that
+    Phase 10 experiments can easily link against lightweight library stubs
+    without relying on dynamic libraries.
+    """
+
+    if flags is None:
+        flags = list(DEFAULT_FLAGS)
+    else:
+        flags = list(flags)
+    if sanitize:
+        flags = list(flags) + SANITIZER_FLAGS
+
+    if output is None:
+        tmp = tempfile.NamedTemporaryFile(suffix=".a", delete=False)
+        output_path = Path(tmp.name)
+        tmp.close()
+    else:
+        output_path = Path(output)
+
+    objs: List[Path] = []
+    stdout_parts: List[str] = []
+    stderr_parts: List[str] = []
+    total_warnings = 0
+    total_errors = 0
+    for src in sources:
+        obj_tmp = tempfile.NamedTemporaryFile(suffix=".o", delete=False)
+        obj_path = Path(obj_tmp.name)
+        obj_tmp.close()
+        cmd: List[str] = [compiler]
+        if use_ccache and shutil.which("ccache") is not None:
+            cmd = ["ccache", compiler]
+        cmd += [str(src), "-c", "-o", str(obj_path)] + list(flags)
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        stdout_parts.append(proc.stdout)
+        stderr_parts.append(proc.stderr)
+        w, e = compiler_diagnostics(proc.stdout, proc.stderr)
+        total_warnings += w
+        total_errors += e
+        if proc.returncode != 0:
+            return CompileResult(
+                False,
+                "".join(stdout_parts),
+                "".join(stderr_parts),
+                None,
+                total_warnings,
+                total_errors,
+            )
+        objs.append(obj_path)
+
+    ar_cmd = ["ar", "rcs", str(output_path)] + [str(o) for o in objs]
+    ar_proc = subprocess.run(ar_cmd, capture_output=True, text=True)
+    stdout_parts.append(ar_proc.stdout)
+    stderr_parts.append(ar_proc.stderr)
+    success = ar_proc.returncode == 0
+    return CompileResult(
+        success,
+        "".join(stdout_parts),
+        "".join(stderr_parts),
+        output_path if success else None,
+        total_warnings,
+        total_errors,
+    )
+
+
 def compile_cpp(
     source: Path,
     output: Optional[Path] = None,
