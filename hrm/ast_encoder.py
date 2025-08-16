@@ -6,9 +6,10 @@ string into a sequence of integer node-type ids.  The mapping from node type
 strings to ids is managed by :class:`NodeTypeSchema` and is populated lazily
 as new node kinds are encountered.
 
-The encoder is deliberately lightweight – it only captures node types in a
-pre-order traversal and tracks their depth.  Future iterations can extend
-this to richer embeddings (e.g. parent chains or typed edges).
+The encoder is deliberately lightweight – it captures node types in a
+pre-order traversal and can optionally emit structural information like
+node depth and the parent node type.  Future iterations can extend this to
+richer embeddings (e.g. typed edges or siblings).
 """
 
 from __future__ import annotations
@@ -68,7 +69,9 @@ class ASTEncoder:
         """Return the node-type ids for ``code`` in a pre-order traversal."""
 
         if self.parser is None:
-            raise RuntimeError("Tree-sitter C++ parser unavailable") from self._init_error
+            raise RuntimeError(
+                "Tree-sitter C++ parser unavailable"
+            ) from self._init_error
         tree: Tree = self.parser.parse(code.encode("utf8"))
         ids: List[int] = []
         self._traverse(tree.root_node, ids)
@@ -78,7 +81,9 @@ class ASTEncoder:
         """Return ``(node_type_id, depth)`` pairs for ``code``."""
 
         if self.parser is None:
-            raise RuntimeError("Tree-sitter C++ parser unavailable") from self._init_error
+            raise RuntimeError(
+                "Tree-sitter C++ parser unavailable"
+            ) from self._init_error
         tree: Tree = self.parser.parse(code.encode("utf8"))
         result: List[Tuple[int, int]] = []
 
@@ -89,3 +94,28 @@ class ASTEncoder:
 
         walk(tree.root_node, 0)
         return result
+
+    def encode_with_parents(self, code: str) -> List[Tuple[int, int, int]]:
+        """Return ``(node_id, parent_id, depth)`` triples for ``code``.
+
+        ``parent_id`` for the root node is ``-1``. This helper is useful for
+        lightweight structural embeddings where the model consumes the node
+        type along with its depth and parent type.
+        """
+
+        if self.parser is None:
+            raise RuntimeError(
+                "Tree-sitter C++ parser unavailable"
+            ) from self._init_error
+
+        tree: Tree = self.parser.parse(code.encode("utf8"))
+        triples: List[Tuple[int, int, int]] = []
+
+        def walk(n: Node, parent_id: int, depth: int) -> None:
+            node_id = self.schema.id_for(n.type)
+            triples.append((node_id, parent_id, depth))
+            for child in n.children:
+                walk(child, node_id, depth + 1)
+
+        walk(tree.root_node, -1, 0)
+        return triples
