@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from itertools import count
 import asyncio
+from .version import VersionInfo, collect_version_info
 
 
 class Run(BaseModel):
@@ -12,6 +13,7 @@ class Run(BaseModel):
     status: str = "pending"
     logs: List[str] = Field(default_factory=list)
     artifact: Optional[str] = None
+    version: VersionInfo
 
 
 class RunRegistry:
@@ -25,7 +27,14 @@ class RunRegistry:
 
     def create_run(self, config: Optional[Dict[str, str]] = None) -> Run:
         run_id = next(self._id_counter)
-        run = Run(id=run_id, config=config or {})
+        seed_value = None
+        if config and "seed" in config:
+            try:
+                seed_value = int(config["seed"])
+            except (TypeError, ValueError):
+                seed_value = None
+        version = collect_version_info(seed=seed_value)
+        run = Run(id=run_id, config=config or {}, version=version)
         self._runs[run_id] = run
         self._log_queues[run_id] = asyncio.Queue()
         return run
