@@ -40,13 +40,13 @@ Save new code files in: C:\repos\hrm-coder
     [X] Provide GUI quickstart docs and sample configs
 
 ** [ ] Phase 3: Deterministic Dataset Pipeline (C++)
-    [ ] Implement HumanEval-CPP builder with harness generator and reference solutions
+    [~] Implement HumanEval-CPP builder with harness generator and reference solutions
     [ ] Implement Codeforces-Intro builder (I/O testcases, constraints, per-problem time limits)
     [ ] Implement AtCoder ABC subset builder with normalized input/output cases
     [ ] Write determinism validator to re-run and hash equality of artifacts
     [ ] Integrate DVC pipelines and data/versions.yml locking
     [ ] Add dataset schema contracts and unit tests for loaders
-    [ ] Implement dataset split manager for train/val/test with fixed seeds
+    [~] Implement dataset split manager for train/val/test with fixed seeds
 
 ** [ ] Phase 4: Sandbox Executor
     [ ] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
