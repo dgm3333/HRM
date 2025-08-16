@@ -81,7 +81,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Implement artifact bundler and uploader for reports and raw JSON
 
 ** [ ] Phase 8: CI/CD and Automation
-    [ ] Create GitHub Actions workflow for C++ lint (clang-tidy/clang-format) and unit tests on PRs
+    [~] Create GitHub Actions workflow for C++ lint (clang-tidy/clang-format) and unit tests on PRs
     [ ] Create CI smoke evaluation job on sample subset with artifacts (ctest + lcov upload)
     [ ] Create nightly full evaluation job with retention and tagging
     [ ] Implement version stamping (git SHA, Docker digest, seeds) in runs
