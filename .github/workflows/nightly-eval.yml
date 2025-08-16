@@ -1,0 +1,95 @@
+name: Nightly Full Evaluation
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  full-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y clang-format clang-tidy cmake build-essential lcov
+
+      - name: Build and test
+        id: build-test
+        run: |
+          if [ -f CMakeLists.txt ]; then
+            mkdir build && cd build
+            cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_EXE_LINKER_FLAGS="--coverage" ..
+            make
+            ctest --output-on-failure --output-junit ctest-report.xml
+            cd ..
+          else
+            echo "No C++ tests found."
+          fi
+
+      - name: Collect coverage
+        if: ${{ steps.build-test.outcome == 'success' }}
+        run: |
+          if [ -d build ]; then
+            lcov --capture --directory build --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+            genhtml coverage.info --output-directory coverage_html
+          else
+            echo "No coverage generated."
+          fi
+
+      - name: Upload test results
+        if: ${{ steps.build-test.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-ctest-results
+          path: build/ctest-report.xml
+          retention-days: 7
+
+      - name: Upload coverage
+        if: ${{ steps.build-test.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-coverage
+          path: coverage_html
+          retention-days: 7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: pip install torch
+
+      - name: Full evaluation
+        run: |
+          python scripts/smoke_eval.py > full_eval.log
+
+      - name: Upload evaluation log
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-full-eval
+          path: full_eval.log
+          retention-days: 7
+
+      - name: Tag nightly run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = `nightly-${new Date().toISOString().slice(0,10)}`;
+            try {
+              await github.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tag}`,
+              });
+            } catch (e) {
+              // tag didn't exist
+            }
+            await github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tag}`,
+              sha: context.sha,
+            });
