@@ -41,7 +41,7 @@ def get_run(run_id: int):
 @app.post("/train", response_model=Run)
 def start_train(config: Dict[str, str] | None = None):
     run = registry.create_run(config)
-    run.artifact = f"/artifacts/run_{run.id}/"
+    _init_artifact(run.id)
     registry.append_log(run.id, "training started")
     registry.update_status(run.id, "training")
     return run
@@ -50,10 +50,20 @@ def start_train(config: Dict[str, str] | None = None):
 @app.post("/eval", response_model=Run)
 def start_eval(config: Dict[str, str] | None = None):
     run = registry.create_run(config)
-    run.artifact = f"/artifacts/run_{run.id}/"
+    _init_artifact(run.id)
     registry.append_log(run.id, "evaluation started")
     registry.update_status(run.id, "evaluating")
     return run
+
+
+def _init_artifact(run_id: int) -> None:
+    """Create an artifact directory with a placeholder file."""
+    path = ARTIFACT_DIR / f"run_{run_id}"
+    path.mkdir(parents=True, exist_ok=True)
+    placeholder = path / "README.txt"
+    if not placeholder.exists():
+        placeholder.write_text("artifacts for run %d" % run_id)
+    registry.get_run(run_id).artifact = f"/artifacts/run_{run_id}/"
 
 
 @app.websocket("/logs/ws/{run_id}")

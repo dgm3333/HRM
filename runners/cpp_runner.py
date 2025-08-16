@@ -8,16 +8,20 @@ against multiple input/output pairs with basic resource limits.
 """
 from __future__ import annotations
 
+import os
 import resource
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
 
 DEFAULT_FLAGS: List[str] = ["-std=c++17", "-O2", "-pipe"]
-SANITIZER_FLAGS: List[str] = ["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
+SANITIZER_FLAGS: List[str] = [
+    "-fsanitize=address,undefined",
+    "-fno-omit-frame-pointer",
+]
 
 
 def compile_cpp_sources(
@@ -184,8 +188,25 @@ def run_binary(
     input_data: str = "",
     timeout: float = 2.0,
     memory_limit: Optional[int] = None,
+    env: Optional[Mapping[str, str]] = None,
 ) -> Tuple[int, str, str]:
-    """Execute a compiled binary with optional resource limits."""
+    """Execute a compiled ``binary`` with optional limits and environment.
+
+    Parameters
+    ----------
+    binary:
+        Path to the executable to run.
+    input_data:
+        Data fed to ``stdin`` of the process.
+    timeout:
+        Maximum wall-clock time in seconds before termination.
+    memory_limit:
+        Optional address-space limit in bytes.
+    env:
+        Extra environment variables to inject. Values override the current
+        process environment which enables dynamic library lookup via
+        ``LD_LIBRARY_PATH`` when rpath isn't provided.
+    """
 
     def preexec() -> None:
         _set_limits(memory_limit)
@@ -197,6 +218,7 @@ def run_binary(
         text=True,
         timeout=timeout,
         preexec_fn=preexec,
+        env={**os.environ, **env} if env is not None else None,
     )
     return proc.returncode, proc.stdout, proc.stderr
 
@@ -215,6 +237,7 @@ def run_codeforces_tests(
     libraries: Optional[Iterable[str]] = None,
     rpath: Optional[Iterable[Path]] = None,
     use_ccache: bool = False,
+    env: Optional[Mapping[str, str]] = None,
 ) -> dict:
     """Compile ``sources`` and run them against all tests in ``tests_dir``.
 
@@ -236,7 +259,11 @@ def run_codeforces_tests(
     )
     results = []
     if not success or binary is None:
-        return {"compile_stdout": out, "compile_stderr": err, "results": results}
+        return {
+            "compile_stdout": out,
+            "compile_stderr": err,
+            "results": results,
+        }
 
     for input_file in sorted(Path(tests_dir).glob("*.in")):
         test_name = input_file.stem
@@ -249,6 +276,7 @@ def run_codeforces_tests(
                 input_data=input_data,
                 timeout=timeout,
                 memory_limit=memory_limit,
+                env=env,
             )
         except subprocess.TimeoutExpired:
             code, stdout, stderr = -1, "", "TIMEOUT"

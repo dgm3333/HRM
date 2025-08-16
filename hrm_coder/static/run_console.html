@@ -6,14 +6,39 @@
 </head>
 <body>
   <h1>Run Console</h1>
+  <label for="picker">Config:</label>
+  <select id="picker"></select><br/>
   <label>Config JSON:</label>
-  <textarea id="config" rows="4" cols="40">{"foo":"bar"}</textarea><br/>
+  <textarea id="config" rows="4" cols="40"></textarea><br/>
   <button onclick="startRun('train')">Start Train</button>
   <button onclick="startRun('eval')">Start Eval</button>
   <pre id="result"></pre>
   <script>
+    const picker = document.getElementById('picker');
+    const cfgBox = document.getElementById('config');
+    async function loadConfigs() {
+      const resp = await fetch('/static/configs.json');
+      const items = await resp.json();
+      picker.innerHTML = '';
+      for (const item of items) {
+        const opt = document.createElement('option');
+        opt.value = item.name;
+        opt.textContent = item.name;
+        opt.dataset.cfg = JSON.stringify(item.config, null, 2);
+        picker.appendChild(opt);
+      }
+      if (items.length) {
+        cfgBox.value = JSON.stringify(items[0].config);
+      }
+    }
+    picker.addEventListener('change', () => {
+      const opt = picker.selectedOptions[0];
+      cfgBox.value = opt.dataset.cfg || '';
+    });
+    loadConfigs();
+
     async function startRun(kind) {
-      let cfgText = document.getElementById('config').value;
+      let cfgText = cfgBox.value;
       let cfg;
       try {
         cfg = JSON.parse(cfgText);
