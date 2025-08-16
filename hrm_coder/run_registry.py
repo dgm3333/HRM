@@ -34,6 +34,10 @@ class RunRegistry:
         runs = list(self._runs.values())
         return runs[offset : offset + limit]
 
+    def get_run(self, run_id: int) -> Optional[Run]:
+        """Return run by id if it exists."""
+        return self._runs.get(run_id)
+
     def update_status(self, run_id: int, status: str) -> None:
         if run_id in self._runs:
             self._runs[run_id].status = status
