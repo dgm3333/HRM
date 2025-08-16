@@ -46,6 +46,10 @@ class RunnerConfig:
     order ``isolate`` → ``nsjail`` → ``runsc``. When no sandbox is
     detected the value ``"none"`` is used.
 
+    ``network`` controls whether sandboxed processes may access the
+    network. For deterministic and safe execution the default disables
+    networking.
+
     ``compiler`` likewise accepts ``"auto"`` to pick the first available
     C++ compiler from :mod:`runners.toolchain_detector` in the order
     ``g++`` → ``clang++``.
@@ -56,6 +60,7 @@ class RunnerConfig:
     timeout: int = 5
     memory_limit: int = 256  # in megabytes
     cpus: int = 1
+    network: bool = False
 
 
 @dataclass

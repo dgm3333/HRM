@@ -9,6 +9,7 @@ def test_load_config_defaults():
     assert cfg.runner.timeout == 5
     assert cfg.runner.memory_limit == 256
     assert cfg.runner.cpus == 1
+    assert cfg.runner.network is False
     assert cfg.acceptance.pass_at_1 == 0.5
     assert cfg.acceptance.max_timeout_rate == 0.05
     assert cfg.training.baseline_coef == 0.5
@@ -23,6 +24,7 @@ def test_load_config_override():
         "runner.timeout=10",
         "runner.memory_limit=512",
         "runner.cpus=2",
+        "runner.network=true",
         "acceptance.pass_at_1=0.9",
         "training.baseline_coef=0.7",
         "training.curriculum_stage=hidden",
@@ -32,6 +34,7 @@ def test_load_config_override():
     assert cfg.runner.timeout == 10
     assert cfg.runner.memory_limit == 512
     assert cfg.runner.cpus == 2
+    assert cfg.runner.network is True
     assert cfg.acceptance.pass_at_1 == 0.9
     assert cfg.training.baseline_coef == 0.7
     assert cfg.training.curriculum_stage == "hidden"
