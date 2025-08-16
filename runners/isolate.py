@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Mapping
 
 
 class SandboxError(RuntimeError):
@@ -41,6 +41,7 @@ class IsolateRunner:
         readonly_dirs: Optional[Iterable[str]] = None,
         stdout: Optional[str] = None,
         stderr: Optional[str] = None,
+        env: Optional[Mapping[str, str]] = None,
     ) -> List[str]:
         """Build an ``isolate --run`` invocation.
 
@@ -67,6 +68,9 @@ class IsolateRunner:
         stdout, stderr:
             Optional filenames (inside the sandbox) to capture the
             respective streams.
+        env:
+            Optional mapping of environment variables to define inside the
+            sandbox.
         """
         isolate_cmd = [
             self.isolate_path,
@@ -89,6 +93,9 @@ class IsolateRunner:
             isolate_cmd.append(f"--stdout={stdout}")
         if stderr is not None:
             isolate_cmd.append(f"--stderr={stderr}")
+        if env is not None:
+            for key, value in env.items():
+                isolate_cmd.append(f"--env={key}={value}")
         isolate_cmd.extend(["--run", "--"])
         isolate_cmd.extend(command)
         return isolate_cmd
@@ -107,6 +114,7 @@ class IsolateRunner:
         stdout: Optional[str] = None,
         stderr: Optional[str] = None,
         stdin: Optional[bytes] = None,
+        env: Optional[Mapping[str, str]] = None,
     ) -> subprocess.CompletedProcess:
         """Execute ``command`` within ``isolate``.
 
@@ -142,6 +150,7 @@ class IsolateRunner:
                 readonly_dirs=readonly_dirs,
                 stdout=stdout,
                 stderr=stderr,
+                env=env,
             )
             proc = subprocess.run(
                 cmd,

@@ -39,3 +39,10 @@ def test_build_command_with_filesystem_options():
     assert "--stdout=out.txt" in cmd
     assert "--stderr=err.txt" in cmd
 
+
+def test_build_command_with_env():
+    runner = IsolateRunner(isolate_path="isolate", box_id=2)
+    cmd = runner.build_command(["/bin/true"], env={"LD_LIBRARY_PATH": "/libs", "FOO": "BAR"})
+    assert "--env=LD_LIBRARY_PATH=/libs" in cmd
+    assert "--env=FOO=BAR" in cmd
+

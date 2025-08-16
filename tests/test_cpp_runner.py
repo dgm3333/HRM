@@ -196,6 +196,52 @@ def test_warning_count(tmp_path: Path) -> None:
     assert res.warnings >= 1
 
 
+def test_run_binary_passes_env_to_sandbox(tmp_path: Path) -> None:
+    lib_src = tmp_path / "double.cpp"
+    lib_src.write_text('extern "C" int times_two(int x){return 2*x;}\n')
+    lib_path = tmp_path / "libdouble.so"
+    lib_res = compile_shared_library([lib_src], output=lib_path)
+    assert lib_res.success
+
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include <iostream>
+extern "C" int times_two(int);
+int main(){std::cout<<times_two(7);}
+"""
+    )
+    main_res = compile_cpp_sources(
+        [main], library_dirs=[tmp_path], libraries=["double"]
+    )
+    assert main_res.success and main_res.binary is not None
+
+    class EnvRunner:
+        def __init__(self) -> None:
+            self.env = None
+
+        def run(self, cmd, **kwargs):
+            self.env = kwargs.get("env")
+            return subprocess.run(
+                cmd,
+                input=kwargs.get("stdin"),
+                capture_output=True,
+                text=True,
+                check=False,
+                env=self.env,
+            )
+
+    runner = EnvRunner()
+    code, stdout, stderr = run_binary(
+        main_res.binary,
+        env={"LD_LIBRARY_PATH": str(tmp_path)},
+        sandbox=runner,
+    )
+    assert code == 0
+    assert stdout.strip() == "14"
+    assert runner.env == {"LD_LIBRARY_PATH": str(tmp_path)}
+
+
 class SpyRunner:
     def __init__(self) -> None:
         self.calls = 0

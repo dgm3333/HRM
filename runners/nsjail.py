@@ -1,6 +1,6 @@
 import shutil
 import subprocess
-from typing import List, Optional
+from typing import List, Optional, Mapping
 
 
 class SandboxError(RuntimeError):
@@ -28,6 +28,7 @@ class NSJailRunner:
         memory: int = 256 * 1024,
         processes: int = 1,
         network: bool = False,
+        env: Optional[Mapping[str, str]] = None,
     ) -> List[str]:
         """Construct an ``nsjail`` invocation.
 
@@ -46,6 +47,9 @@ class NSJailRunner:
             Maximum number of processes.
         network:
             Allow network access if ``True``.
+        env:
+            Optional mapping of environment variables to set inside the
+            sandbox.
         """
         nsjail_cmd = [
             self.nsjail_path,
@@ -56,6 +60,9 @@ class NSJailRunner:
         ]
         if network:
             nsjail_cmd.append("--disable_clone_newnet")
+        if env is not None:
+            for key, value in env.items():
+                nsjail_cmd.extend(["--env", f"{key}={value}"])
         nsjail_cmd.append("--")
         nsjail_cmd.extend(command)
         return nsjail_cmd
@@ -70,6 +77,7 @@ class NSJailRunner:
         processes: int = 1,
         network: bool = False,
         stdin: Optional[bytes] = None,
+        env: Optional[Mapping[str, str]] = None,
     ) -> subprocess.CompletedProcess:
         """Execute a command within ``nsjail``.
 
@@ -87,6 +95,7 @@ class NSJailRunner:
             memory=memory,
             processes=processes,
             network=network,
+            env=env,
         )
         return subprocess.run(
             cmd,
