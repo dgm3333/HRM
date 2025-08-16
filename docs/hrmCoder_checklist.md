@@ -16,6 +16,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Setup project operation within isolate/gVisor runner images
     [~] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
         - Added sandbox detection utility for isolate, nsjail, and gVisor runsc runtime
+        - Added default sandbox selection helper to prefer isolate and fall back to nsjail or runsc
         - Added toolchain detection utility for g++, clang++, lcov, llvm-cov, and gcov
     [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
