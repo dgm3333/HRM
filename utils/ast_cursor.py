@@ -8,8 +8,10 @@ parse tree in breadth‑first order returning the first node that satisfies
 the predicate.
 
 The initial implementation is intentionally simple – it supports only
-predicate based searches and returns the first match.  It can be expanded in
-later phases with scores, multi-node selections or learned policies.
+predicate based searches and returns the first match.  For Phase 9 we also
+include a tiny scored policy that walks the tree once and returns the node
+with the highest score.  This serves as a lightweight placeholder for a
+future learned cursor module.
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ from tree_sitter import Node, Tree
 
 
 Predicate = Callable[[Node], bool]
+ScoreFn = Callable[[Node], float]
 
 
 @dataclass
@@ -48,6 +51,32 @@ class CursorPolicy:
                 return node
             queue.extend(node.children)
         return None
+
+
+@dataclass
+class ScoredCursorPolicy:
+    """Select the node with the highest ``scorer`` value.
+
+    The traversal is breadth‑first and considers all nodes.  If ``predicate``
+    is provided, only nodes satisfying it are scored.
+    """
+
+    scorer: ScoreFn
+    predicate: Optional[Predicate] = None
+
+    def select(self, tree: Tree) -> Optional[Node]:
+        best_score = float("-inf")
+        best_node: Optional[Node] = None
+        queue = [tree.root_node]
+        while queue:
+            node = queue.pop(0)
+            if self.predicate is None or self.predicate(node):
+                score = self.scorer(node)
+                if score > best_score:
+                    best_score = score
+                    best_node = node
+            queue.extend(node.children)
+        return best_node
 
 
 def find_node_by_type(tree: Tree, node_type: str) -> Optional[Node]:
