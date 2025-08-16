@@ -14,6 +14,7 @@ import runners.cpp_runner as cpp_runner
 from runners.cpp_runner import (
     compile_cpp_sources,
     compile_shared_library,
+    compile_static_library,
     run_binary,
     run_codeforces_tests,
 )
@@ -112,6 +113,36 @@ int main(){std::cout<<times_two(5);}
     )
     assert code == 0
     assert stdout.strip() == "10"
+
+
+def test_static_library_link(tmp_path: Path) -> None:
+    """Build a static library and link it into a main program."""
+    lib_src = tmp_path / "math.cpp"
+    lib_src.write_text("int add(int a,int b){return a+b;}\n")
+
+    lib_path = tmp_path / "libmath.a"
+    lib_res = compile_static_library([lib_src], output=lib_path)
+    assert lib_res.success, f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    assert lib_res.binary is not None
+
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include <iostream>
+extern int add(int, int);
+int main(){std::cout<<add(2,3);}
+"""
+    )
+
+    main_res = compile_cpp_sources(
+        [main], library_dirs=[tmp_path], libraries=["math"]
+    )
+    assert main_res.success, f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    assert main_res.binary is not None
+
+    code, stdout, stderr = run_binary(main_res.binary)
+    assert code == 0
+    assert stdout.strip() == "5"
 
 
 def test_static_build(tmp_path: Path) -> None:
