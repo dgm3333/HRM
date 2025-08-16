@@ -303,6 +303,7 @@ def run_binary(
     memory_limit: Optional[int] = None,
     env: Optional[Mapping[str, str]] = None,
     sandbox: Optional[IsolateRunner] = None,
+    cwd: Optional[Path] = None,
 ) -> Tuple[int, str, str]:
     """Execute a compiled ``binary`` with optional limits and environment.
 
@@ -326,18 +327,35 @@ def run_binary(
     sandbox:
         Optional :class:`~runners.isolate.IsolateRunner` used to enforce
         resource limits and disable networking.
+    cwd:
+        Working directory for execution. Defaults to the directory of
+        ``binary`` so that coverage artifacts are written alongside the
+        executable.
     """
+
+    if cwd is None:
+        cwd = binary.parent
 
     if sandbox is not None:
         memory_kb = (memory_limit or 256 * 1024 * 1024) // 1024
         try:
-            proc = sandbox.run(
-                [str(binary)],
-                time_limit=int(timeout),
-                wall_time=int(timeout),
-                memory=memory_kb,
-                stdin=input_data,
-            )
+            try:
+                proc = sandbox.run(
+                    [str(binary)],
+                    time_limit=int(timeout),
+                    wall_time=int(timeout),
+                    memory=memory_kb,
+                    stdin=input_data,
+                    workdir=str(cwd),
+                )
+            except TypeError:
+                proc = sandbox.run(
+                    [str(binary)],
+                    time_limit=int(timeout),
+                    wall_time=int(timeout),
+                    memory=memory_kb,
+                    stdin=input_data,
+                )
         except SandboxError as exc:
             return -1, "", str(exc)
         return proc.returncode, proc.stdout, proc.stderr
@@ -353,8 +371,52 @@ def run_binary(
         timeout=timeout,
         preexec_fn=preexec,
         env={**os.environ, **env} if env is not None else None,
+        cwd=str(cwd),
     )
     return proc.returncode, proc.stdout, proc.stderr
+
+
+def _parse_gcov_file(path: Path) -> float:
+    """Return line coverage ratio from a ``gcov`` report file."""
+    executed = 0
+    total = 0
+    for line in path.read_text().splitlines():
+        parts = line.split(":", 2)
+        if len(parts) < 2:
+            continue
+        count = parts[0].strip()
+        if count in ("-", "====="):
+            continue
+        if count == "#####":
+            total += 1
+            continue
+        try:
+            num = int(count)
+        except ValueError:
+            continue
+        total += 1
+        if num > 0:
+            executed += 1
+    return executed / total if total else 0.0
+
+
+def _collect_coverage(sources: Sequence[Path], workdir: Path) -> float:
+    """Run ``gcov`` on ``sources`` in ``workdir`` and average coverage."""
+    if shutil.which("gcov") is None:
+        return 0.0
+    covs: List[float] = []
+    for src in sources:
+        subprocess.run(
+            ["gcov", str(src), "-o", str(workdir)],
+            capture_output=True,
+            text=True,
+            cwd=str(workdir),
+            check=False,
+        )
+        gcov_file = workdir / f"{src.name}.gcov"
+        if gcov_file.exists():
+            covs.append(_parse_gcov_file(gcov_file))
+    return sum(covs) / len(covs) if covs else 0.0
 
 
 def run_codeforces_tests(
@@ -374,12 +436,15 @@ def run_codeforces_tests(
     env: Optional[Mapping[str, str]] = None,
     sandbox: Optional[IsolateRunner] = None,
     cache: Optional[SandboxCache] = None,
+    collect_coverage: bool = False,
 ) -> dict:
     """Compile ``sources`` and run them against all tests in ``tests_dir``.
 
     The directory is expected to contain pairs of ``*.in`` and ``*.out`` files.
     Results include compilation diagnostics and a list of per-test outcomes
-    with error classifications.
+    with error classifications.  When ``collect_coverage`` is ``True`` the
+    program is instrumented with ``--coverage`` and ``gcov`` is used to compute
+    a line coverage ratio.
     """
 
     key: Optional[str] = None
@@ -391,15 +456,20 @@ def run_codeforces_tests(
         parts.append(str(timeout).encode())
         if memory_limit is not None:
             parts.append(str(memory_limit).encode())
+        if collect_coverage:
+            parts.append(b"coverage")
         key = cache.hash_parts(parts)
         cached = cache.load(key)
         if cached is not None:
             return cached
 
+    compile_flags = list(flags) if flags is not None else list(DEFAULT_FLAGS)
+    if collect_coverage:
+        compile_flags.append("--coverage")
     compile_res = compile_cpp_sources(
         sources,
         compiler=compiler,
-        flags=flags,
+        flags=compile_flags,
         sanitize=sanitize,
         static=static,
         library_dirs=library_dirs,
@@ -431,6 +501,9 @@ def run_codeforces_tests(
         env=env,
         sandbox=sandbox,
     )
+    coverage_ratio = 0.0
+    if collect_coverage:
+        coverage_ratio = _collect_coverage(sources, compile_res.binary.parent)
     data = {
         "compile_stdout": compile_res.stdout,
         "compile_stderr": compile_res.stderr,
@@ -439,6 +512,8 @@ def run_codeforces_tests(
         "compile_status": compile_status,
         "results": run_res["results"],
     }
+    if collect_coverage:
+        data["coverage"] = coverage_ratio
     if cache is not None and key is not None:
         cache.store(key, data)
     return data

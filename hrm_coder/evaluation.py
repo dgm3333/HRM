@@ -15,6 +15,8 @@ import argparse
 from pathlib import Path
 from typing import Dict, Sequence, List, Optional
 
+from .artifacts.bundle import bundle_artifacts, upload_bundle
+
 
 @dataclass
 class TaskEvaluation:
@@ -279,6 +281,8 @@ def generate_reports(
     run_paths: Sequence[str] | None = None,
     baseline_path: str | None = None,
     incident_paths: Sequence[str] | None = None,
+    bundle_path: str | None = None,
+    upload_dir: str | None = None,
 ) -> Dict[int, float]:
     """Compute metrics and emit Markdown/HTML reports.
 
@@ -299,6 +303,14 @@ def generate_reports(
     incident_paths:
         Optional JSON files mapping task id → status string, used to
         compute incident rates such as timeouts and sanitizer failures.
+    bundle_path:
+        Optional path for a bundled ``.tar.gz`` archive containing the
+        generated reports and raw JSON. If ``None`` the bundle is skipped
+        unless ``upload_dir`` is provided.
+    upload_dir:
+        Optional destination directory to copy the bundle to. If
+        provided, a bundle will be created even when ``bundle_path`` is
+        ``None``.
 
     Returns
     -------
@@ -326,12 +338,21 @@ def generate_reports(
 
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Persist raw results and aggregated metrics for bundling
+    (out_dir / "results.json").write_text(json.dumps(results))
+    (out_dir / "metrics.json").write_text(
+        json.dumps({str(k): v for k, v in metrics.items()})
+    )
+
     (out_dir / "report.md").write_text(
         markdown_report(metrics, flaky, incidents)
     )
     (out_dir / "report.html").write_text(
         html_report(metrics, flaky, incidents)
     )
+
+    bundle_file: str | None = None
 
     if baseline_path is not None:
         named_metrics = {f"pass@{k}": v for k, v in metrics.items()}
@@ -342,6 +363,22 @@ def generate_reports(
         (out_dir / "baseline.html").write_text(
             comparison_html_report(comparison)
         )
+
+    if bundle_path is not None or upload_dir is not None:
+        bundle_file = bundle_path or str(out_dir / "artifacts.tar.gz")
+        files = [
+            out_dir / "report.md",
+            out_dir / "report.html",
+            out_dir / "results.json",
+            out_dir / "metrics.json",
+        ]
+        if baseline_path is not None:
+            files.extend(
+                [out_dir / "baseline.md", out_dir / "baseline.html"]
+            )
+        bundle_artifacts([str(f) for f in files], bundle_file)
+        if upload_dir is not None:
+            upload_bundle(bundle_file, upload_dir)
 
     return metrics
 
@@ -381,6 +418,16 @@ def main() -> None:  # pragma: no cover - CLI entry point
         default=None,
         help="JSON files of run status strings for incident rate computation",
     )
+    parser.add_argument(
+        "--bundle",
+        default=None,
+        help="Path to write a bundled tar.gz of reports and JSON",
+    )
+    parser.add_argument(
+        "--upload",
+        default=None,
+        help="Directory to copy the bundle to (artifact upload)",
+    )
     args = parser.parse_args()
     generate_reports(
         results_path=args.results,
@@ -389,6 +436,8 @@ def main() -> None:  # pragma: no cover - CLI entry point
         run_paths=args.runs,
         baseline_path=args.baseline,
         incident_paths=args.incidents,
+        bundle_path=args.bundle,
+        upload_dir=args.upload,
     )
 
 

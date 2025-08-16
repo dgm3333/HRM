@@ -11,6 +11,7 @@
       <tr>
         <th onclick="sortTable(0)">ID</th>
         <th onclick="sortTable(1)">Status</th>
+        <th onclick="sortTable(2)">Coverage</th>
         <th>Artifact</th>
       </tr>
     </thead>
@@ -24,7 +25,15 @@
       tbody.innerHTML = '';
       for (const r of runs) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td><a href="run.html?id=${r.id}">${r.id}</a></td><td>${r.status}</td><td>${r.artifact ? `<a href="${r.artifact}">link</a>` : ''}</td>`;
+        let cov = '';
+        try {
+          const resp = await fetch(`/runs/${r.id}/coverage`);
+          if (resp.ok) {
+            const data = await resp.json();
+            cov = data.line + '%';
+          }
+        } catch {}
+        tr.innerHTML = `<td><a href="run.html?id=${r.id}">${r.id}</a></td><td>${r.status}</td><td>${cov}</td><td>${r.artifact ? `<a href="${r.artifact}">link</a>` : ''}</td>`;
         tbody.appendChild(tr);
       }
     }

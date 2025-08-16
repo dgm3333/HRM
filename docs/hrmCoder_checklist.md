@@ -31,6 +31,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Define Hydra config schema and default configs under conf/
     [?] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
     [X] Implement environment pinning and seed/tz/locale normalization module
+    [X] Add minimal CMake build helper for C++ harnesses
 
 ** [~] Phase 2: GUI Stub and Backend Skeleton
     [X] Scaffold FastAPI app with /runs, /train, /eval, /logs/ws endpoints
@@ -40,6 +41,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement artifact static server for JUnit XML and lcov/llvm-cov HTML
     [X] Add WebSocket log streamer with tail-follow behavior
     [X] Provide GUI quickstart docs and sample configs
+    [X] Expose coverage summary endpoint and display on run page
 
 ** [ ] Phase 3: Deterministic Dataset Pipeline (C++)
     [~] Implement HumanEval-CPP builder with harness generator and reference solutions
@@ -47,8 +49,8 @@ Save new code files in: C:\repos\hrm-coder
     [~] Implement AtCoder ABC subset builder with normalized input/output cases
     [X] Write determinism validator to re-run and hash equality of artifacts
     [ ] Integrate DVC pipelines and data/versions.yml locking
-    [~] Add dataset schema contracts and unit tests for loaders
-    [~] Implement dataset split manager for train/val/test with fixed seeds
+    [X] Add dataset schema contracts and unit tests for loaders
+    [X] Implement dataset split manager for train/val/test with fixed seeds
 
 ** [ ] Phase 4: Sandbox Executor
     [~] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
@@ -90,14 +92,14 @@ Save new code files in: C:\repos\hrm-coder
     [?] Create CI smoke evaluation job on sample subset with artifacts (ctest + lcov upload)
     [~] Create nightly full evaluation job with retention and tagging
     [X] Implement version stamping (git SHA, Docker digest, seeds) in runs
-    [ ] Configure GitHub Pages publish for latest report artifacts
+    [~] Configure GitHub Pages publish for latest report artifacts
     [ ] Bootstrap MLflow or W\&B project with tags and run summaries
 
 ** [ ] Phase 9: AST-Edit Action Space (v2)
     [X] Integrate Tree-sitter C++ grammar and bindings
     [X] Implement node type schema and AST embedding encoder for C++
     [X] Define edit action space for insert, replace, and delete operations
-    [~] Implement cursor policy module for region selection by HRM high-level
+    [?] Implement cursor policy module for region selection by HRM high-level
     [X] Implement decoder constraint checker to avoid invalid AST states
     [ ] Add ablation job configs and comparison report against token baseline
 

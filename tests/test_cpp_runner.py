@@ -1,24 +1,21 @@
 from pathlib import Path
-
-from pathlib import Path
-import pathlib
 import re
 import subprocess
 import sys
 
-import pytest
+import pytest  # noqa: F401
 
-sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-import runners.cpp_runner as cpp_runner
-from runners.cpp_runner import (
+import runners.cpp_runner as cpp_runner  # noqa: E402
+from runners.cpp_runner import (  # noqa: E402
     compile_cpp_sources,
     compile_shared_library,
     compile_static_library,
     run_binary,
     run_codeforces_tests,
 )
-from runners.sandbox_cache import SandboxCache
+from runners.sandbox_cache import SandboxCache  # noqa: E402
 
 
 def test_compile_multi_file(tmp_path: Path) -> None:
@@ -53,7 +50,9 @@ def test_shared_library_link(tmp_path: Path) -> None:
 
     lib_path = tmp_path / "libdouble.so"
     lib_res = compile_shared_library([lib_src], output=lib_path)
-    assert lib_res.success, f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    assert lib_res.success, (
+        f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    )
     assert lib_res.binary is not None
 
     main = tmp_path / "main.cpp"
@@ -71,7 +70,9 @@ int main(){std::cout<<times_two(5);}
         libraries=["double"],
         rpath=[tmp_path],
     )
-    assert main_res.success, f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    assert main_res.success, (
+        f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    )
     assert main_res.binary is not None
 
     code, stdout, stderr = run_binary(main_res.binary)
@@ -88,7 +89,9 @@ def test_shared_library_env_link(tmp_path: Path) -> None:
 
     lib_path = tmp_path / "libdouble.so"
     lib_res = compile_shared_library([lib_src], output=lib_path)
-    assert lib_res.success, f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    assert lib_res.success, (
+        f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    )
     assert lib_res.binary is not None
 
     main = tmp_path / "main.cpp"
@@ -105,7 +108,9 @@ int main(){std::cout<<times_two(5);}
         library_dirs=[tmp_path],
         libraries=["double"],
     )
-    assert main_res.success, f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    assert main_res.success, (
+        f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    )
     assert main_res.binary is not None
 
     code, stdout, stderr = run_binary(
@@ -122,7 +127,9 @@ def test_static_library_link(tmp_path: Path) -> None:
 
     lib_path = tmp_path / "libmath.a"
     lib_res = compile_static_library([lib_src], output=lib_path)
-    assert lib_res.success, f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    assert lib_res.success, (
+        f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    )
     assert lib_res.binary is not None
 
     main = tmp_path / "main.cpp"
@@ -137,7 +144,9 @@ int main(){std::cout<<add(2,3);}
     main_res = compile_cpp_sources(
         [main], library_dirs=[tmp_path], libraries=["math"]
     )
-    assert main_res.success, f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    assert main_res.success, (
+        f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    )
     assert main_res.binary is not None
 
     code, stdout, stderr = run_binary(main_res.binary)
@@ -154,7 +163,9 @@ def test_static_build(tmp_path: Path) -> None:
     assert res.success, f"compile failed: {res.stdout}\n{res.stderr}"
     assert res.binary is not None
 
-    ldd = subprocess.run(["ldd", str(res.binary)], capture_output=True, text=True)
+    ldd = subprocess.run(
+        ["ldd", str(res.binary)], capture_output=True, text=True
+    )
     assert "not a dynamic executable" in (ldd.stdout + ldd.stderr)
 
 
@@ -203,7 +214,7 @@ class SpyRunner:
 def test_run_codeforces_tests_cache(tmp_path: Path, monkeypatch):
     src = tmp_path / "main.cpp"
     src.write_text(
-        "#include <iostream>\nint main(){int a,b; if(!(std::cin>>a>>b)) return 0; std::cout<<a+b;}"
+        "#include <iostream>\nint main(){int a,b; if(!(std::cin>>a>>b)) return 0; std::cout<<a+b;}"  # noqa: E501
     )
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir()
@@ -229,3 +240,24 @@ def test_run_codeforces_tests_cache(tmp_path: Path, monkeypatch):
     assert calls["compile"] == 1
     assert spy.calls == 1
     assert first == second
+
+
+def test_run_codeforces_tests_coverage(tmp_path: Path) -> None:
+    """Ensure coverage metrics are returned when requested."""
+    src = tmp_path / "main.cpp"
+    src.write_text(
+        """
+#include <iostream>
+int main(){int x; if(!(std::cin>>x)) return 0;
+if(x>0) std::cout<<1; else std::cout<<0;}
+"""  # noqa: E501
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("1\n")
+    (tests_dir / "a.out").write_text("1\n")
+
+    res = run_codeforces_tests([src], tests_dir, collect_coverage=True)
+    assert "coverage" in res
+    assert 0.0 <= res["coverage"] <= 1.0
+    assert res["coverage"] < 1.0
