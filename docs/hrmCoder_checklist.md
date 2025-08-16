@@ -55,6 +55,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement Kattis micro-set builder for additional I/O tasks
     [X] Write determinism validator to re-run and hash equality of artifacts
     [~] Integrate DVC pipelines and data/versions.yml locking
+        - Added version verification utility and catalog build check
     [X] Add dataset schema contracts and unit tests for loaders
     [X] Implement dataset split manager for train/val/test with fixed seeds
 

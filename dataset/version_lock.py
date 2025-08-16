@@ -25,7 +25,9 @@ def compute_dataset_hash(dataset_dir: Path) -> str:
     return hashlib.sha256(serialized).hexdigest()
 
 
-def update_version(dataset_name: str, dataset_dir: str, versions_file: str) -> str:
+def update_version(
+    dataset_name: str, dataset_dir: str, versions_file: str
+) -> str:
     """Update *versions_file* with the hash of *dataset_dir*.
 
     Parameters
@@ -59,3 +61,39 @@ def update_version(dataset_name: str, dataset_dir: str, versions_file: str) -> s
         json.dumps(versions, indent=2, sort_keys=True), encoding="utf-8"
     )
     return digest
+
+
+def verify_version(
+    dataset_name: str, dataset_dir: str, versions_file: str
+) -> bool:
+    """Check that *dataset_dir* matches the hash in *versions_file*.
+
+    Parameters
+    ----------
+    dataset_name:
+        Name of the dataset entry in the versions file.
+    dataset_dir:
+        Directory containing the processed dataset to verify.
+    versions_file:
+        Path to the versions file previously written by
+        :func:`update_version`.
+
+    Returns
+    -------
+    bool
+        ``True`` if the dataset's current hash equals the recorded hash,
+        ``False`` otherwise. ``False`` is also returned when the versions
+        file or dataset entry does not exist.
+    """
+
+    versions_path = Path(versions_file)
+    if not versions_path.exists():
+        return False
+
+    versions = json.loads(versions_path.read_text() or "{}")
+    recorded = versions.get(dataset_name)
+    if recorded is None:
+        return False
+
+    current = compute_dataset_hash(Path(dataset_dir))
+    return current == recorded

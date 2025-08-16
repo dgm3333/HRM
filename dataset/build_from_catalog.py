@@ -10,20 +10,35 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, Tuple
 
-from .build_atcoder_abc_dataset import build_dataset as build_atcoder
-from .build_codeforces_intro_dataset import build_dataset as build_codeforces
-from .build_humaneval_cpp_dataset import build_dataset as build_humaneval
-from .build_kattis_micro_dataset import build_dataset as build_kattis
+from .build_atcoder_abc_dataset import (
+    build_dataset as build_atcoder,
+    DATASET_NAME as ATCODER_NAME,
+)
+from .build_codeforces_intro_dataset import (
+    build_dataset as build_codeforces,
+    DATASET_NAME as CODEFORCES_NAME,
+)
+from .build_humaneval_cpp_dataset import (
+    build_dataset as build_humaneval,
+    DATASET_NAME as HUMANEVAL_NAME,
+)
+from .build_kattis_micro_dataset import (
+    build_dataset as build_kattis,
+    DATASET_NAME as KATTIS_NAME,
+)
 from .determinism import validate_build_determinism
+from .version_lock import verify_version
 
-# Map human-friendly dataset names to their builder functions.
-BUILDERS: Dict[str, Callable[[str, str, int, str | None], None]] = {
-    "HumanEval-CPP": build_humaneval,
-    "Codeforces-Intro": build_codeforces,
-    "AtCoder-ABC": build_atcoder,
-    "Kattis-micro": build_kattis,
+# Map human-friendly dataset names to their builder functions and version keys.
+BUILDERS: Dict[
+    str, Tuple[Callable[[str, str, int, str | None], None], str]
+] = {
+    "HumanEval-CPP": (build_humaneval, HUMANEVAL_NAME),
+    "Codeforces-Intro": (build_codeforces, CODEFORCES_NAME),
+    "AtCoder-ABC": (build_atcoder, ATCODER_NAME),
+    "Kattis-micro": (build_kattis, KATTIS_NAME),
 }
 
 
@@ -61,12 +76,13 @@ def build_from_catalog(
     for entry in catalog:
         name = entry.get("name")
         raw_path = entry.get("path")
-        build_fn = BUILDERS.get(name)
+        builder_entry = BUILDERS.get(name)
 
-        if not build_fn or raw_path is None:
+        if not builder_entry or raw_path is None:
             # Unknown dataset or missing path; skip silently for now.
             continue
 
+        build_fn, version_key = builder_entry
         dataset_dir = out_root / name
 
         if check_determinism:
@@ -80,6 +96,10 @@ def build_from_catalog(
             seed=seed,
             versions_path=versions_file,
         )
+
+        # Ensure the recorded hash matches the freshly built dataset.
+        if not verify_version(version_key, str(dataset_dir), versions_file):
+            raise RuntimeError(f"Hash mismatch for dataset {name}")
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI wrapper
