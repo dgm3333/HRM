@@ -323,7 +323,9 @@ def run_binary(
         Optional address-space limit in bytes.  When a sandbox is supplied the
         value is converted to kilobytes for the adapter.
     env:
-        Extra environment variables to inject when executing directly.
+        Extra environment variables to inject. When a sandbox is provided
+        the variables are forwarded to it, otherwise they are passed to
+        :func:`subprocess.run` directly.
     sandbox:
         Optional :class:`~runners.isolate.IsolateRunner` used to enforce
         resource limits and disable networking.
@@ -347,15 +349,26 @@ def run_binary(
                     memory=memory_kb,
                     stdin=input_data,
                     workdir=str(cwd),
+                    env=env,
                 )
             except TypeError:
-                proc = sandbox.run(
-                    [str(binary)],
-                    time_limit=int(timeout),
-                    wall_time=int(timeout),
-                    memory=memory_kb,
-                    stdin=input_data,
-                )
+                try:
+                    proc = sandbox.run(
+                        [str(binary)],
+                        time_limit=int(timeout),
+                        wall_time=int(timeout),
+                        memory=memory_kb,
+                        stdin=input_data,
+                        env=env,
+                    )
+                except TypeError:
+                    proc = sandbox.run(
+                        [str(binary)],
+                        time_limit=int(timeout),
+                        wall_time=int(timeout),
+                        memory=memory_kb,
+                        stdin=input_data,
+                    )
         except SandboxError as exc:
             return -1, "", str(exc)
         return proc.returncode, proc.stdout, proc.stderr
