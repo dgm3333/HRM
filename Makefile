@@ -1,4 +1,4 @@
-.PHONY: data build_runner train eval report smoke cpp-build cpp-test
+.PHONY: data build_runner build_trainer train eval report lint smoke cpp-build cpp-test
 
 # Placeholder targets for Phase 1 scaffold
 
@@ -6,7 +6,10 @@ data:
 	@echo "Data pipeline not implemented yet"
 
 build_runner:
-	docker build -f runner.Dockerfile -t hrm-runner .
+        docker build -f runner.Dockerfile -t hrm-runner .
+
+build_trainer:
+        docker build -f trainer.Dockerfile -t hrm-trainer .
 
 train:
 	python -m hrm_coder.train $(ARGS)
@@ -15,10 +18,13 @@ eval:
 	python -m hrm_coder.eval_cli $(ARGS)
 
 report:
-	@echo "Report generation not implemented yet"
+        @echo "Report generation not implemented yet"
+
+lint:
+        pre-commit run --all-files
 
 smoke:
-	python scripts/smoke_train.py
+        python scripts/smoke_train.py
 
 # Basic C++ build and test targets for Phase 1 scaffolding
 CPP_PRESET ?= sanitized

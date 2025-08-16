@@ -30,12 +30,15 @@ Save new code files in: C:\repos\hrm-coder
     [X] Generate project layout scaffold script for hrm-coder directory tree
     [?] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
     [~] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
-    [~] Create Makefile targets for data, train, eval, and report (CMake + ctest integration)
+    [~] Create Makefile targets for data, train, eval, report, and tooling (CMake + ctest integration)
+        - Added build_trainer target for trainer Docker image
+        - Added lint target invoking pre-commit hooks
     [~] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
         - Added helper to instantiate sandbox runners from configuration
         - Added network access toggle to runner config defaults
-    [?] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
+    [X] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
+        - Added Makefile lint target to run pre-commit
     [X] Implement environment pinning and seed/tz/locale normalization module
     [X] Add minimal CMake build helper for C++ harnesses
 
