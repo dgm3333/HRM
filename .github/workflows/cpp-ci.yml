@@ -1,0 +1,36 @@
+name: C++ Lint and Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang tools
+        run: sudo apt-get update && sudo apt-get install -y clang-format clang-tidy cmake build-essential
+
+      - name: C++ lint
+        run: |
+          files=$(git ls-files '*.cpp' '*.hpp' '*.cc' '*.hh' '*.h' '*.cxx' '*.hxx')
+          if [ -n "$files" ]; then
+            clang-format --dry-run --Werror $files
+            clang-tidy $files -- -std=c++17
+          else
+            echo "No C++ files to lint."
+          fi
+
+      - name: Build and test
+        run: |
+          if [ -f CMakeLists.txt ]; then
+            mkdir build && cd build
+            cmake ..
+            make
+            ctest --output-on-failure
+          else
+            echo "No C++ tests found."
+          fi
