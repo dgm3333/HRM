@@ -1,7 +1,12 @@
 from pathlib import Path
 
+from pathlib import Path
+import pathlib
 import re
 import subprocess
+import sys
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 from runners.cpp_runner import (
     compile_cpp_sources,
@@ -24,11 +29,11 @@ int main() { std::cout << add(1, 2); }
     )
     helper.write_text("int add(int a, int b) { return a + b; }\n")
 
-    success, out, err, binary = compile_cpp_sources([main, helper])
-    assert success, f"compile failed: {out}\n{err}"
-    assert binary is not None
+    res = compile_cpp_sources([main, helper])
+    assert res.success, f"compile failed: {res.stdout}\n{res.stderr}"
+    assert res.binary is not None
 
-    code, stdout, stderr = run_binary(binary)
+    code, stdout, stderr = run_binary(res.binary)
     assert code == 0
     assert stdout.strip() == "3"
 
@@ -41,9 +46,9 @@ def test_shared_library_link(tmp_path: Path) -> None:
     )
 
     lib_path = tmp_path / "libdouble.so"
-    success, out, err, so = compile_shared_library([lib_src], output=lib_path)
-    assert success, f"lib compile failed: {out}\n{err}"
-    assert so is not None
+    lib_res = compile_shared_library([lib_src], output=lib_path)
+    assert lib_res.success, f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    assert lib_res.binary is not None
 
     main = tmp_path / "main.cpp"
     main.write_text(
@@ -54,16 +59,16 @@ int main(){std::cout<<times_two(5);}
 """
     )
 
-    success, out, err, binary = compile_cpp_sources(
+    main_res = compile_cpp_sources(
         [main],
         library_dirs=[tmp_path],
         libraries=["double"],
         rpath=[tmp_path],
     )
-    assert success, f"compile failed: {out}\n{err}"
-    assert binary is not None
+    assert main_res.success, f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    assert main_res.binary is not None
 
-    code, stdout, stderr = run_binary(binary)
+    code, stdout, stderr = run_binary(main_res.binary)
     assert code == 0
     assert stdout.strip() == "10"
 
@@ -76,9 +81,9 @@ def test_shared_library_env_link(tmp_path: Path) -> None:
     )
 
     lib_path = tmp_path / "libdouble.so"
-    success, out, err, so = compile_shared_library([lib_src], output=lib_path)
-    assert success, f"lib compile failed: {out}\n{err}"
-    assert so is not None
+    lib_res = compile_shared_library([lib_src], output=lib_path)
+    assert lib_res.success, f"lib compile failed: {lib_res.stdout}\n{lib_res.stderr}"
+    assert lib_res.binary is not None
 
     main = tmp_path / "main.cpp"
     main.write_text(
@@ -89,16 +94,16 @@ int main(){std::cout<<times_two(5);}
 """
     )
 
-    success, out, err, binary = compile_cpp_sources(
+    main_res = compile_cpp_sources(
         [main],
         library_dirs=[tmp_path],
         libraries=["double"],
     )
-    assert success, f"compile failed: {out}\n{err}"
-    assert binary is not None
+    assert main_res.success, f"compile failed: {main_res.stdout}\n{main_res.stderr}"
+    assert main_res.binary is not None
 
     code, stdout, stderr = run_binary(
-        binary, env={"LD_LIBRARY_PATH": str(tmp_path)}
+        main_res.binary, env={"LD_LIBRARY_PATH": str(tmp_path)}
     )
     assert code == 0
     assert stdout.strip() == "10"
@@ -109,13 +114,11 @@ def test_static_build(tmp_path: Path) -> None:
     src = tmp_path / "main.cpp"
     src.write_text("int main(){return 0;}")
 
-    success, out, err, binary = compile_cpp_sources(
-        [src], static=True, sanitize=False
-    )
-    assert success, f"compile failed: {out}\n{err}"
-    assert binary is not None
+    res = compile_cpp_sources([src], static=True, sanitize=False)
+    assert res.success, f"compile failed: {res.stdout}\n{res.stderr}"
+    assert res.binary is not None
 
-    ldd = subprocess.run(["ldd", str(binary)], capture_output=True, text=True)
+    ldd = subprocess.run(["ldd", str(res.binary)], capture_output=True, text=True)
     assert "not a dynamic executable" in (ldd.stdout + ldd.stderr)
 
 
@@ -133,3 +136,14 @@ def test_ccache_hit(tmp_path: Path) -> None:
     )
     m = re.search(r"Hits:\s+(\d+)", stats.stdout)
     assert m and int(m.group(1)) >= 1
+
+
+def test_warning_count(tmp_path: Path) -> None:
+    """Compile code with a warning and ensure it is reported."""
+    src = tmp_path / "warn.cpp"
+    src.write_text("int main(){int x; return 0;}")
+    res = compile_cpp_sources([
+        src
+    ], flags=["-std=c++17", "-Wall"], sanitize=False)
+    assert res.success
+    assert res.warnings >= 1

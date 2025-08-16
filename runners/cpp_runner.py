@@ -4,7 +4,9 @@ This module provides a minimal wrapper around the system C++ compiler and
 runtime execution.  It is intended as an early step toward the full Phase 10
 C++ runner described in the project roadmap.  The functions here support
 compilation with common optimization and sanitizer flags and running binaries
-against multiple input/output pairs with basic resource limits.
+against multiple input/output pairs with basic resource limits.  It also
+includes basic compiler diagnostics parsing to report warning and error
+counts, advancing the Phase 10 goal of richer feedback from the build step.
 """
 from __future__ import annotations
 
@@ -13,10 +15,12 @@ import resource
 import shutil
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .error_taxonomy import classify_compile, classify_runtime
+from utils.diagnostics import compiler_diagnostics
 
 
 DEFAULT_FLAGS: List[str] = ["-std=c++17", "-O2", "-pipe"]
@@ -24,6 +28,18 @@ SANITIZER_FLAGS: List[str] = [
     "-fsanitize=address,undefined",
     "-fno-omit-frame-pointer",
 ]
+
+
+@dataclass
+class CompileResult:
+    """Result of a compilation step."""
+
+    success: bool
+    stdout: str
+    stderr: str
+    binary: Optional[Path]
+    warnings: int
+    errors: int
 
 
 def compile_cpp_sources(
@@ -38,7 +54,7 @@ def compile_cpp_sources(
     libraries: Optional[Iterable[str]] = None,
     rpath: Optional[Iterable[Path]] = None,
     use_ccache: bool = False,
-) -> Tuple[bool, str, str, Optional[Path]]:
+) -> CompileResult:
     """Compile one or more C++ ``sources`` into a single binary.
 
     This helper expands the simple single-file ``compile_cpp`` function to
@@ -108,7 +124,15 @@ def compile_cpp_sources(
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
     success = proc.returncode == 0
-    return success, proc.stdout, proc.stderr, output_path if success else None
+    warnings, errors = compiler_diagnostics(proc.stdout, proc.stderr)
+    return CompileResult(
+        success,
+        proc.stdout,
+        proc.stderr,
+        output_path if success else None,
+        warnings,
+        errors,
+    )
 
 
 def compile_shared_library(
@@ -119,7 +143,7 @@ def compile_shared_library(
     flags: Optional[Iterable[str]] = None,
     sanitize: bool = True,
     use_ccache: bool = False,
-) -> Tuple[bool, str, str, Optional[Path]]:
+) -> CompileResult:
     """Compile ``sources`` into a shared library.
 
     This helper produces a ``.so`` suitable for linking against binaries
@@ -152,7 +176,15 @@ def compile_shared_library(
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
     success = proc.returncode == 0
-    return success, proc.stdout, proc.stderr, output_path if success else None
+    warnings, errors = compiler_diagnostics(proc.stdout, proc.stderr)
+    return CompileResult(
+        success,
+        proc.stdout,
+        proc.stderr,
+        output_path if success else None,
+        warnings,
+        errors,
+    )
 
 
 def compile_cpp(
@@ -162,7 +194,7 @@ def compile_cpp(
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
     sanitize: bool = True,
-) -> Tuple[bool, str, str, Optional[Path]]:
+) -> CompileResult:
     """Compile a single C++ ``source`` file.
 
     This is a thin wrapper around :func:`compile_cpp_sources` for backwards
@@ -248,7 +280,7 @@ def run_codeforces_tests(
     with error classifications.
     """
 
-    success, out, err, binary = compile_cpp_sources(
+    compile_res = compile_cpp_sources(
         sources,
         compiler=compiler,
         flags=flags,
@@ -261,11 +293,12 @@ def run_codeforces_tests(
     )
     compile_status = classify_compile(success, err)
     results = []
-    if not success or binary is None:
+    if not compile_res.success or compile_res.binary is None:
         return {
-            "compile_stdout": out,
-            "compile_stderr": err,
-            "compile_status": compile_status,
+            "compile_stdout": compile_res.stdout,
+            "compile_stderr": compile_res.stderr,
+            "compile_warnings": compile_res.warnings,
+            "compile_errors": compile_res.errors,
             "results": results,
         }
 
@@ -276,7 +309,7 @@ def run_codeforces_tests(
         expected = expected_file.read_text() if expected_file.exists() else ""
         try:
             code, stdout, stderr = run_binary(
-                binary,
+                compile_res.binary,
                 input_data=input_data,
                 timeout=timeout,
                 memory_limit=memory_limit,
@@ -299,8 +332,9 @@ def run_codeforces_tests(
         )
 
     return {
-        "compile_stdout": out,
-        "compile_stderr": err,
-        "compile_status": compile_status,
+        "compile_stdout": compile_res.stdout,
+        "compile_stderr": compile_res.stderr,
+        "compile_warnings": compile_res.warnings,
+        "compile_errors": compile_res.errors,
         "results": results,
     }
