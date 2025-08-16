@@ -31,7 +31,7 @@ jobs:
             mkdir build && cd build
             cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_EXE_LINKER_FLAGS="--coverage" ..
             make
-            ctest --output-on-failure
+            ctest --output-on-failure --output-junit ctest-report.xml
             cd ..
           else
             echo "No C++ tests found."
@@ -48,9 +48,34 @@ jobs:
             echo "No coverage generated."
           fi
 
+      - name: Upload test results
+        if: ${{ steps.build-test.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-results
+          path: build/ctest-report.xml
+
       - name: Upload coverage
         if: ${{ steps.build-test.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ctest-coverage
           path: coverage_html
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: pip install torch
+
+      - name: Smoke evaluation
+        run: |
+          python scripts/smoke_eval.py > smoke_eval.log
+
+      - name: Upload smoke evaluation log
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-eval
+          path: smoke_eval.log
