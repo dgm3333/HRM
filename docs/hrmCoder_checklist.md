@@ -48,7 +48,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Implement Codeforces-Intro builder (I/O testcases, constraints, per-problem time limits)
     [~] Implement AtCoder ABC subset builder with normalized input/output cases
     [X] Write determinism validator to re-run and hash equality of artifacts
-    [ ] Integrate DVC pipelines and data/versions.yml locking
+    [~] Integrate DVC pipelines and data/versions.yml locking
     [X] Add dataset schema contracts and unit tests for loaders
     [X] Implement dataset split manager for train/val/test with fixed seeds
 
