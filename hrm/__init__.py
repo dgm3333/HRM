@@ -10,6 +10,13 @@ on code tasks.
 
 from .code_tokenizer import CppTokenizer
 from .code_encoder import CodeEncoder
+from .ast_encoder import ASTEncoder
 from .training_loop import HRMTrainer, HRMTrainingConfig
 
-__all__ = ["CppTokenizer", "CodeEncoder", "HRMTrainer", "HRMTrainingConfig"]
+__all__ = [
+    "CppTokenizer",
+    "CodeEncoder",
+    "ASTEncoder",
+    "HRMTrainer",
+    "HRMTrainingConfig",
+]
