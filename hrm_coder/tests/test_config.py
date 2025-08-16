@@ -7,12 +7,16 @@ def test_load_config_defaults():
     assert cfg.dataset.name == "humaneval-cpp"
     assert cfg.runner.compiler == "g++"
     assert cfg.runner.timeout == 5
+    assert cfg.acceptance.pass_at_1 == 0.5
+    assert cfg.acceptance.max_timeout_rate == 0.05
 
 
 def test_load_config_override():
     cfg = load_config([
         "model.learning_rate=0.01",
         "runner.timeout=10",
+        "acceptance.pass_at_1=0.9",
     ])
     assert cfg.model.learning_rate == 0.01
     assert cfg.runner.timeout == 10
+    assert cfg.acceptance.pass_at_1 == 0.9

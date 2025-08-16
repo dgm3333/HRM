@@ -37,11 +37,26 @@ class RunnerConfig:
 
 
 @dataclass
+class AcceptanceConfig:
+    """Acceptance metric thresholds for Phase 0.
+
+    These values represent the minimum quality bar for C++ experiments.
+    Later phases may expand this structure with additional metrics.
+    """
+
+    pass_at_1: float = 0.5
+    pass_at_10: float = 0.7
+    max_timeout_rate: float = 0.05
+    max_sanitizer_failures: int = 0
+
+
+@dataclass
 class AppConfig:
     """Top-level application configuration."""
     model: ModelConfig = field(default_factory=ModelConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     runner: RunnerConfig = field(default_factory=RunnerConfig)
+    acceptance: AcceptanceConfig = field(default_factory=AcceptanceConfig)
 
 
 def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
@@ -63,6 +78,7 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
         model=ModelConfig(**cfg_dict["model"]),
         dataset=DatasetConfig(**cfg_dict["dataset"]),
         runner=RunnerConfig(**cfg_dict["runner"]),
+        acceptance=AcceptanceConfig(**cfg_dict["acceptance"]),
     )
 
 
@@ -71,5 +87,6 @@ __all__ = [
     "DatasetConfig",
     "ModelConfig",
     "RunnerConfig",
+    "AcceptanceConfig",
     "load_config",
 ]
