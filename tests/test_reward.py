@@ -126,6 +126,69 @@ def test_compute_from_outputs_matches_manual_scores():
     assert abs(r1 - r2) < 1e-6
 
 
+def test_compile_diagnostics_penalty():
+    agg = RewardAggregator(
+        weights={"compile": 0.1, "diagnostics": 0.3},
+        max_edit_penalty=0.0,
+        max_time_penalty=0.0,
+        max_memory_penalty=0.0,
+    )
+
+    clean = agg.compute(
+        compile_success=True,
+        tests_passed=0,
+        tests_total=0,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        warnings=0,
+        errors=0,
+    )
+
+    noisy = agg.compute(
+        compile_success=True,
+        tests_passed=0,
+        tests_total=0,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        warnings=2,
+        errors=1,
+    )
+
+    assert noisy < clean
+
+    r = agg.compute_from_outputs(
+        compile_success=True,
+        tests_passed=0,
+        tests_total=0,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        clang_output="",
+        cppcheck_output="",
+        compiler_stdout="a.cpp:1:1: warning: w\n",
+        compiler_stderr="a.cpp:2:2: error: e\n",
+    )
+
+    manual = agg.compute(
+        compile_success=True,
+        tests_passed=0,
+        tests_total=0,
+        coverage=0.0,
+        edit_cost=0.0,
+        time_used=0.0,
+        memory_used=0.0,
+        warnings=1,
+        errors=1,
+    )
+
+    assert abs(r - manual) < 1e-6
+
+
 def test_sanitizer_bonus_and_penalty():
     agg = RewardAggregator(
         weights={'compile': 0.1, 'tests': 0.2, 'sanitizer': 0.1},
