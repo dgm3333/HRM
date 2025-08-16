@@ -97,7 +97,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Integrate Tree-sitter C++ grammar and bindings
     [X] Implement node type schema and AST embedding encoder for C++
     [X] Define edit action space for insert, replace, and delete operations
-    [~] Implement cursor policy module for region selection by HRM high-level
+    [?] Implement cursor policy module for region selection by HRM high-level
     [X] Implement decoder constraint checker to avoid invalid AST states
     [ ] Add ablation job configs and comparison report against token baseline
 
