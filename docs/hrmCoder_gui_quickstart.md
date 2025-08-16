@@ -17,6 +17,12 @@ curl http://localhost:8000/runs
 # Start a training run
 curl -X POST http://localhost:8000/train -H 'Content-Type: application/json' -d '{}'
 
+# Update the run status
+curl -X PATCH http://localhost:8000/runs/1 -H 'Content-Type: application/json' -d '{"status":"done"}'
+
+# Append a log line
+curl -X POST http://localhost:8000/runs/1/logs -H 'Content-Type: application/json' -d '{"message":"hello"}'
+
 # List artifacts for a run
 curl http://localhost:8000/runs/1/artifacts
 

@@ -33,3 +33,12 @@ def test_run_lifecycle():
     fetched = client.get(f"/runs/{run['id']}").json()
     assert fetched["id"] == run["id"]
 
+    # Update status
+    updated = client.patch(f"/runs/{run['id']}", json={"status": "done"}).json()
+    assert updated["status"] == "done"
+
+    # Append a log line
+    client.post(f"/runs/{run['id']}/logs", json={"message": "finished"})
+    logs = client.get(f"/runs/{run['id']}").json()["logs"]
+    assert "finished" in logs
+
