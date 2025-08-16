@@ -20,3 +20,12 @@ repos:
     hooks:
       - id: cpplint
         files: \.(cpp|hpp|cc|cxx|c|h)$
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: 336fdd7c3cab698ead0b1c95157b9e74d3906b62
+    hooks:
+      - id: clang-tidy
+        files: \.(cpp|hpp|cc|cxx|c|h)$
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8

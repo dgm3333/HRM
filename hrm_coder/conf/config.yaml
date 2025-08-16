@@ -1,0 +1,4 @@
+defaults:
+  - dataset: humaneval_cpp
+  - model: small
+  - _self_
