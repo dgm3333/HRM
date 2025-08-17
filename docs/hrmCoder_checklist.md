@@ -26,7 +26,8 @@ Save new code files in: C:\repos\hrm-coder
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
     [~] Draft sandbox Threat Model and initial security requirements for native binaries
     [~] Write ADRs for sandbox choice, experiment tracker, and GUI stack
-    [~] Create initial risk register and mitigation plan
+    [?] Create initial risk register and mitigation plan
+        - Added initial risk register and mitigation plan docs
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
     [X] Generate project layout scaffold script for hrm-coder directory tree
