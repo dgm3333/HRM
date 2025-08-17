@@ -45,6 +45,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
         - Installed coverage utilities and compiled gtest; locale/timezone pinned for determinism
     [X] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
+        - Pinned PyTorch CUDA 12.1 image with cuDNN and set deterministic environment variables
         - Pinned PyTorch 2.2.0 with CUDA 12.1 runtime and enforced reproducibility flags
     [~] Create Makefile targets for data, train, eval, report, and tooling (CMake + ctest integration)
         - Added build_trainer target for trainer Docker image
