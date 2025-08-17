@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from typing import List
 
 
 def clang_tidy_score(output: str) -> float:
@@ -27,12 +29,48 @@ def cppcheck_score(output: str) -> float:
     return max(0.0, 1.0 - 0.1 * problems)
 
 
+@dataclass
+class Diagnostic:
+    """Single compiler diagnostic entry."""
+
+    file: str
+    line: int
+    column: int
+    level: str
+    message: str
+
+
+_DIAG_RE = re.compile(r"^(.*?):(\d+):(\d+): (warning|error|note): (.*)$")
+
+
+def parse_compiler_diagnostics(stdout: str, stderr: str) -> List[Diagnostic]:
+    """Parse ``stdout``/``stderr`` into structured diagnostics."""
+
+    text = f"{stdout}\n{stderr}"
+    diags: List[Diagnostic] = []
+    for line in text.splitlines():
+        m = _DIAG_RE.match(line.strip())
+        if not m:
+            continue
+        file, line_no, col_no, level, msg = m.groups()
+        diags.append(
+            Diagnostic(
+                file=file,
+                line=int(line_no),
+                column=int(col_no),
+                level=level,
+                message=msg,
+            )
+        )
+    return diags
+
+
 def compiler_diagnostics(stdout: str, stderr: str) -> tuple[int, int]:
     """Return counts of warnings and errors from compiler output."""
 
-    text = f"{stdout}\n{stderr}"
-    warnings = len(re.findall(r": warning:", text))
-    errors = len(re.findall(r": error:", text))
+    diags = parse_compiler_diagnostics(stdout, stderr)
+    warnings = sum(d.level == "warning" for d in diags)
+    errors = sum(d.level == "error" for d in diags)
     return warnings, errors
 
 

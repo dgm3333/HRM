@@ -13,10 +13,18 @@ from typing import Iterable, List, Sequence
 import shutil
 import subprocess
 
+from utils.diagnostics import Diagnostic, parse_compiler_diagnostics
+
 # Default compile flags aimed at reasonably optimized yet deterministic
-# builds. These can be extended by callers for sanitizers or additional
-# warnings.
-DEFAULT_FLAGS: List[str] = ["-std=c++17", "-O2", "-pipe"]
+# builds. These enable common warnings to feed into diagnostics parsing.
+DEFAULT_FLAGS: List[str] = [
+    "-std=c++17",
+    "-O2",
+    "-pipe",
+    "-Wall",
+    "-Wextra",
+    "-fdiagnostics-color=never",
+]
 
 
 @dataclass
@@ -27,8 +35,8 @@ class CompileResult:
     returncode: int
     stdout: str
     stderr: str
-    warnings: List[str]
-    errors: List[str]
+    warnings: List[Diagnostic]
+    errors: List[Diagnostic]
 
     @property
     def success(self) -> bool:
@@ -104,9 +112,9 @@ def compile_cpp(
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
 
-    stderr_lines = proc.stderr.splitlines()
-    warnings = [line for line in stderr_lines if "warning:" in line]
-    errors = [line for line in stderr_lines if "error:" in line]
+    diags = parse_compiler_diagnostics(proc.stdout, proc.stderr)
+    warnings = [d for d in diags if d.level == "warning"]
+    errors = [d for d in diags if d.level == "error"]
 
     return CompileResult(
         cmd=cmd,
@@ -162,9 +170,9 @@ def compile_shared_library(
     cmd.extend(["-o", str(output)])
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
-    stderr_lines = proc.stderr.splitlines()
-    warnings = [line for line in stderr_lines if "warning:" in line]
-    errors = [line for line in stderr_lines if "error:" in line]
+    diags = parse_compiler_diagnostics(proc.stdout, proc.stderr)
+    warnings = [d for d in diags if d.level == "warning"]
+    errors = [d for d in diags if d.level == "error"]
     return CompileResult(
         cmd=cmd,
         returncode=proc.returncode,
@@ -194,8 +202,8 @@ def compile_static_library(
     obj_files: List[Path] = []
     stdout_parts: List[str] = []
     stderr_parts: List[str] = []
-    warnings: List[str] = []
-    errors: List[str] = []
+    warnings: List[Diagnostic] = []
+    errors: List[Diagnostic] = []
     for src in sources:
         obj = output.with_name(Path(src).stem + ".o")
         cmd: List[str] = []
@@ -210,9 +218,9 @@ def compile_static_library(
         proc = subprocess.run(cmd, capture_output=True, text=True)
         stdout_parts.append(proc.stdout)
         stderr_parts.append(proc.stderr)
-        lines = proc.stderr.splitlines()
-        warnings.extend(line for line in lines if "warning:" in line)
-        errors.extend(line for line in lines if "error:" in line)
+        diags = parse_compiler_diagnostics(proc.stdout, proc.stderr)
+        warnings.extend(d for d in diags if d.level == "warning")
+        errors.extend(d for d in diags if d.level == "error")
         if proc.returncode != 0:
             return CompileResult(
                 cmd=cmd,

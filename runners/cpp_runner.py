@@ -24,10 +24,17 @@ from .error_taxonomy import classify_compile
 from .io_judge import run_io_tests
 from .isolate import IsolateRunner, SandboxError
 from .sandbox_cache import SandboxCache
-from utils.diagnostics import compiler_diagnostics
+from utils.diagnostics import Diagnostic, parse_compiler_diagnostics
 
 
-DEFAULT_FLAGS: List[str] = ["-std=c++17", "-O2", "-pipe"]
+DEFAULT_FLAGS: List[str] = [
+    "-std=c++17",
+    "-O2",
+    "-pipe",
+    "-Wall",
+    "-Wextra",
+    "-fdiagnostics-color=never",
+]
 SANITIZER_FLAGS: List[str] = [
     "-fsanitize=address,undefined",
     "-fno-omit-frame-pointer",
@@ -54,6 +61,7 @@ class CompileResult:
     binary: Optional[Path]
     warnings: int
     errors: int
+    diagnostics: List[Diagnostic]
 
 
 def compile_cpp_sources(
@@ -140,7 +148,9 @@ def compile_cpp_sources(
         cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
     )
     success = proc.returncode == 0
-    warnings, errors = compiler_diagnostics(proc.stdout, proc.stderr)
+    diags = parse_compiler_diagnostics(proc.stdout, proc.stderr)
+    warnings = sum(d.level == "warning" for d in diags)
+    errors = sum(d.level == "error" for d in diags)
     return CompileResult(
         success,
         proc.stdout,
@@ -148,6 +158,7 @@ def compile_cpp_sources(
         output_path if success else None,
         warnings,
         errors,
+        diags,
     )
 
 
@@ -194,7 +205,9 @@ def compile_shared_library(
         cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
     )
     success = proc.returncode == 0
-    warnings, errors = compiler_diagnostics(proc.stdout, proc.stderr)
+    diags = parse_compiler_diagnostics(proc.stdout, proc.stderr)
+    warnings = sum(d.level == "warning" for d in diags)
+    errors = sum(d.level == "error" for d in diags)
     return CompileResult(
         success,
         proc.stdout,
@@ -202,6 +215,7 @@ def compile_shared_library(
         output_path if success else None,
         warnings,
         errors,
+        diags,
     )
 
 
@@ -241,6 +255,7 @@ def compile_static_library(
     stderr_parts: List[str] = []
     total_warnings = 0
     total_errors = 0
+    diagnostics: List[Diagnostic] = []
     for src in sources:
         obj_tmp = tempfile.NamedTemporaryFile(suffix=".o", delete=False)
         obj_path = Path(obj_tmp.name)
@@ -258,9 +273,10 @@ def compile_static_library(
         )
         stdout_parts.append(proc.stdout)
         stderr_parts.append(proc.stderr)
-        w, e = compiler_diagnostics(proc.stdout, proc.stderr)
-        total_warnings += w
-        total_errors += e
+        diags = parse_compiler_diagnostics(proc.stdout, proc.stderr)
+        diagnostics.extend(diags)
+        total_warnings += sum(d.level == "warning" for d in diags)
+        total_errors += sum(d.level == "error" for d in diags)
         if proc.returncode != 0:
             return CompileResult(
                 False,
@@ -269,6 +285,7 @@ def compile_static_library(
                 None,
                 total_warnings,
                 total_errors,
+                diagnostics,
             )
         objs.append(obj_path)
 
@@ -290,6 +307,7 @@ def compile_static_library(
         output_path if success else None,
         total_warnings,
         total_errors,
+        diagnostics,
     )
 
 
