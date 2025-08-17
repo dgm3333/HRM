@@ -33,6 +33,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Create Makefile targets for data, train, eval, report, and tooling (CMake + ctest integration)
         - Added build_trainer target for trainer Docker image
         - Added lint target invoking pre-commit hooks
+        - Wired data target to dataset.build_from_catalog for deterministic builds
     [~] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
         - Added helper to instantiate sandbox runners from configuration
