@@ -88,7 +88,8 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement dataset split manager for train/val/test with fixed seeds
 
 ** [~] Phase 4: Sandbox Executor
-    [?] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
+    [X] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
+        - BinarySandboxAdapter enforces process, memory, and time caps with network disabled by default
     [X] Implement C++ build-and-run pipeline (CMake/g++/clang++) with JUnit XML via GoogleTest
     [X] Add filesystem policy: temp working dir, RO mounts, stdout/stderr caps
     [X] Implement caching layer keyed by prompt+code+tests+limits hash
