@@ -242,7 +242,10 @@ int main(){std::cout<<times_two(7);}
     )
     assert code == 0
     assert stdout.strip() == "14"
-    assert runner.env == {"LD_LIBRARY_PATH": str(tmp_path)}
+    assert runner.env is not None
+    assert runner.env["LD_LIBRARY_PATH"] == str(tmp_path)
+    assert "ASAN_OPTIONS" in runner.env
+    assert "UBSAN_OPTIONS" in runner.env
 
 
 class SpyRunner:
@@ -294,7 +297,9 @@ def test_run_codeforces_tests_cache(tmp_path: Path, monkeypatch):
     assert first == second
 
 
-def test_run_codeforces_tests_cache_includes_flags(tmp_path: Path, monkeypatch):
+def test_run_codeforces_tests_cache_includes_flags(
+    tmp_path: Path, monkeypatch
+) -> None:
     src = tmp_path / "main.cpp"
     src.write_text(
         "#include <iostream>\nint main(){std::cout<<1;}"
@@ -410,3 +415,29 @@ int main(){std::this_thread::sleep_for(std::chrono::milliseconds(100));}
 
     res = run_codeforces_task([src], task_dir, sanitize=False)
     assert res["results"][0]["error_type"] == "timeout"
+
+
+def test_run_binary_injects_sanitizer_env(tmp_path: Path, monkeypatch) -> None:
+    """``run_binary`` should inject sanitizer env variables by default."""
+    src = tmp_path / "main.cpp"
+    src.write_text("int main(){return 0;}")
+
+    res = compile_cpp_sources([src], sanitize=False)
+    assert res.success and res.binary is not None
+
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["env"] = kwargs.get("env")
+
+        class P:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return P()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    run_binary(res.binary)
+    assert "ASAN_OPTIONS" in captured["env"]
+    assert "UBSAN_OPTIONS" in captured["env"]

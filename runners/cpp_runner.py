@@ -33,6 +33,16 @@ SANITIZER_FLAGS: List[str] = [
     "-fno-omit-frame-pointer",
 ]
 
+# Default sanitizer environment ensuring deterministic behaviour when
+# AddressSanitizer or UndefinedBehaviorSanitizer are enabled.  These
+# settings disable leak detection (which can introduce nondeterminism)
+# and force the sanitizers to terminate immediately on failure without
+# coloured output that would pollute logs in some sandboxes.
+SANITIZER_ENV: Mapping[str, str] = {
+    "ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1:color=never",
+    "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1:color=never",
+}
+
 
 @dataclass
 class CompileResult:
@@ -319,6 +329,7 @@ def run_binary(
     timeout: float = 2.0,
     memory_limit: Optional[int] = None,
     env: Optional[Mapping[str, str]] = None,
+    sanitize_env: bool = True,
     sandbox: Optional[IsolateRunner] = None,
     cwd: Optional[Path] = None,
     stdout_limit: Optional[int] = None,
@@ -345,6 +356,10 @@ def run_binary(
         Extra environment variables to inject. When a sandbox is provided
         the variables are forwarded to it, otherwise they are passed to
         :func:`subprocess.run` directly.
+    sanitize_env:
+        When ``True`` injects default ``ASAN_OPTIONS`` and ``UBSAN_OPTIONS``
+        values via :data:`SANITIZER_ENV`.  Callers may set this to ``False``
+        to disable injection or override variables via ``env``.
     sandbox:
         Optional :class:`~runners.isolate.IsolateRunner` used to enforce
         resource limits and disable networking.
@@ -361,6 +376,14 @@ def run_binary(
     if cwd is None:
         cwd = binary.parent
 
+    if sanitize_env:
+        env_combined: Optional[Mapping[str, str]] = {
+            **SANITIZER_ENV,
+            **(env or {}),
+        }
+    else:
+        env_combined = dict(env) if env is not None else None
+
     if sandbox is not None:
         memory_kb = (memory_limit or 256 * 1024 * 1024) // 1024
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -373,7 +396,7 @@ def run_binary(
                     stdin=input_data,
                     workdir=tmpdir,
                     readonly_dirs=[str(cwd)],
-                    env=env,
+                    env=env_combined,
                     stdout_limit=stdout_limit,
                     stderr_limit=stderr_limit,
                 )
@@ -385,7 +408,7 @@ def run_binary(
                         wall_time=int(timeout),
                         memory=memory_kb,
                         stdin=input_data,
-                        env=env,
+                        env=env_combined,
                         stdout_limit=stdout_limit,
                         stderr_limit=stderr_limit,
                     )
@@ -396,6 +419,7 @@ def run_binary(
                         wall_time=int(timeout),
                         memory=memory_kb,
                         stdin=input_data,
+                        env=env_combined,
                         stdout_limit=stdout_limit,
                         stderr_limit=stderr_limit,
                     )
@@ -415,7 +439,11 @@ def run_binary(
         errors="replace",
         timeout=timeout,
         preexec_fn=preexec,
-        env={**os.environ, **env} if env is not None else None,
+        env=(
+            {**os.environ, **env_combined}
+            if env_combined is not None
+            else None
+        ),
         cwd=str(cwd),
     )
     stdout = proc.stdout
