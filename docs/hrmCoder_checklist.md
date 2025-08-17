@@ -150,11 +150,11 @@ Save new code files in: C:\repos\hrm-coder
         - Added integration tests exercising BinarySandboxAdapter with nsjail and gVisor backends
         ~ Document adapter usage and sanitizer configuration in developer docs
     [?] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
-    [?] Configure static versus dynamic linking inside jail with rpath handling and ccache
+    [X] Configure static versus dynamic linking inside jail with rpath handling and ccache
         - Added compile wrapper support for include paths, library directories, rpath, optional static builds, and ccache
         - Added helpers for building shared and static libraries to support library stubs in multi-file projects
         - Extended shared library builder with include, library, and rpath options for linking against dependent libraries
-        - Implement automatic $ORIGIN-based rpath injection for bundled libraries
+        - Implement automatic $ORIGIN-based rpath injection for bundled libraries and binaries
         - Add sandboxed integration tests for dynamic and static linking paths
     [X] Create C++ security test suite for resource abuse and restricted syscalls
     [X] Integrate C++ metrics and outcomes into common evaluator and reports
