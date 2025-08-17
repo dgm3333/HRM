@@ -22,8 +22,9 @@ from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .error_taxonomy import classify_compile
 from .io_judge import run_io_tests
-from .isolate import IsolateRunner, SandboxError
+from .isolate import IsolateRunner
 from .sandbox_cache import SandboxCache
+from .binary_adapter import BinarySandboxAdapter, SANITIZER_ENV
 from utils.diagnostics import compiler_diagnostics
 
 
@@ -32,16 +33,6 @@ SANITIZER_FLAGS: List[str] = [
     "-fsanitize=address,undefined",
     "-fno-omit-frame-pointer",
 ]
-
-# Default sanitizer environment ensuring deterministic behaviour when
-# AddressSanitizer or UndefinedBehaviorSanitizer are enabled.  These
-# settings disable leak detection (which can introduce nondeterminism)
-# and force the sanitizers to terminate immediately on failure without
-# coloured output that would pollute logs in some sandboxes.
-SANITIZER_ENV: Mapping[str, str] = {
-    "ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1:color=never",
-    "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1:color=never",
-}
 
 
 @dataclass
@@ -376,6 +367,20 @@ def run_binary(
     if cwd is None:
         cwd = binary.parent
 
+    if sandbox is not None:
+        adapter = BinarySandboxAdapter(sandbox)
+        return adapter.run(
+            binary,
+            input_data=input_data,
+            timeout=timeout,
+            memory_limit=memory_limit,
+            env=env,
+            sanitize_env=sanitize_env,
+            cwd=cwd,
+            stdout_limit=stdout_limit,
+            stderr_limit=stderr_limit,
+        )
+
     if sanitize_env:
         env_combined: Optional[Mapping[str, str]] = {
             **SANITIZER_ENV,
@@ -383,49 +388,6 @@ def run_binary(
         }
     else:
         env_combined = dict(env) if env is not None else None
-
-    if sandbox is not None:
-        memory_kb = (memory_limit or 256 * 1024 * 1024) // 1024
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                proc = sandbox.run(
-                    [str(binary)],
-                    time_limit=int(timeout),
-                    wall_time=int(timeout),
-                    memory=memory_kb,
-                    stdin=input_data,
-                    workdir=tmpdir,
-                    readonly_dirs=[str(cwd)],
-                    env=env_combined,
-                    stdout_limit=stdout_limit,
-                    stderr_limit=stderr_limit,
-                )
-            except TypeError:
-                try:
-                    proc = sandbox.run(
-                        [str(binary)],
-                        time_limit=int(timeout),
-                        wall_time=int(timeout),
-                        memory=memory_kb,
-                        stdin=input_data,
-                        env=env_combined,
-                        stdout_limit=stdout_limit,
-                        stderr_limit=stderr_limit,
-                    )
-                except TypeError:
-                    proc = sandbox.run(
-                        [str(binary)],
-                        time_limit=int(timeout),
-                        wall_time=int(timeout),
-                        memory=memory_kb,
-                        stdin=input_data,
-                        env=env_combined,
-                        stdout_limit=stdout_limit,
-                        stderr_limit=stderr_limit,
-                    )
-            except SandboxError as exc:
-                return -1, "", str(exc)
-            return proc.returncode, proc.stdout, proc.stderr
 
     def preexec() -> None:
         _set_limits(memory_limit)
