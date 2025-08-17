@@ -49,7 +49,7 @@ Augmentation (to reach \~1k samples without contamination):
 * **Runners:** language-specific:
 
   * Python: `pytest -q` inside sandbox; `pytest-timeout` plugin; cap stdout/stderr. ([Pytest Documentation][16], [LambdaTest][17])
-  * C++ (Phase-2): compile with `g++ -O2 -pipe -static -s` (if available) or dynamic with rpath inside the jail; run with the same limits (use isolate “box”). ([ucw.cz][18])
+  * C++ (Phase-2): compile with `g++ -O2 -pipe -static -s` (if available) or dynamic with `$ORIGIN` rpath inside the jail; optional `ccache` for speed; run with the same limits (use isolate “box”). ([ucw.cz][18])
 * **Caching:** hash(prompt+partial\_code+tests) → avoid re-running identical shards.
 * **Stability:** fix `PYTHONHASHSEED`, locale, time zone; no wall-clock in tests.
 
