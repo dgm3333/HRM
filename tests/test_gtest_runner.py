@@ -1,5 +1,4 @@
 from pathlib import Path
-from pathlib import Path
 import sys
 import subprocess
 import shutil
@@ -8,7 +7,11 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from runners.gtest_runner import run_gtests  # noqa: E402
+import runners.gtest_runner as gtest_runner  # noqa: E402
+from runners.gtest_runner import (  # noqa: E402
+    compile_and_run_gtests,
+    run_gtests,
+)
 from runners.sandbox_cache import SandboxCache  # noqa: E402
 
 if shutil.which("g++") is None or not Path(
@@ -95,3 +98,46 @@ def test_run_gtests_coverage(tmp_path):
     result = run_gtests(binary, collect_coverage=True, sources=[src])
     assert "coverage" in result
     assert 0.0 <= result["coverage"] <= 1.0
+
+
+def test_compile_and_run_gtests(tmp_path):
+    src = tmp_path / "sample.cpp"
+    src.write_text(
+        "#include <gtest/gtest.h>\n"
+        "int add(int a,int b){return a+b;}\n"
+        "TEST(Sample, Adds){EXPECT_EQ(add(2,2),4);}\n"
+        "int main(int argc,char** argv){::testing::InitGoogleTest(&argc,argv);"
+        "return RUN_ALL_TESTS();}\n"
+    )
+    result = compile_and_run_gtests([src])
+    assert result["compile_status"] == "success"
+    assert result["tests"] == 1
+    assert result["failures"] == 0
+    assert result["cases"][0]["name"] == "Adds"
+    assert result["cases"][0]["passed"]
+
+
+def test_compile_and_run_gtests_cache(tmp_path, monkeypatch):
+    src = tmp_path / "sample.cpp"
+    src.write_text(
+        "#include <gtest/gtest.h>\n"
+        "TEST(Sample, Foo){EXPECT_EQ(1,1);}\n"
+        "int main(int argc,char** argv){::testing::InitGoogleTest(&argc,argv);"
+        "return RUN_ALL_TESTS();}\n"
+    )
+    cache = SandboxCache(tmp_path / "cache_compile")
+    calls = {"compile": 0}
+    original_compile = gtest_runner.compile_cpp_sources
+
+    def wrapped_compile(*args, **kwargs):
+        calls["compile"] += 1
+        return original_compile(*args, **kwargs)
+
+    monkeypatch.setattr(gtest_runner, "compile_cpp_sources", wrapped_compile)
+    spy = SpyRunner()
+    first = compile_and_run_gtests([src], sandbox=spy, cache=cache)
+    assert calls["compile"] == 1
+    second = compile_and_run_gtests([src], sandbox=spy, cache=cache)
+    assert calls["compile"] == 1
+    assert spy.calls == 1
+    assert first == second
