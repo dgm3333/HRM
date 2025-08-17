@@ -1,26 +1,26 @@
 [
   {
     "name": "Codeforces-Intro",
-    "license": "TBD",
+    "license": "Codeforces Terms of Service",
     "path": "dataset/raw-data/codeforces_intro",
-    "sha256": "TBD"
+    "sha256": "ca57f094e23bfe3b1e986568a8fb47c5036d5907f64510ad22cecb9420d14d9f"
   },
   {
     "name": "AtCoder-ABC",
-    "license": "TBD",
+    "license": "AtCoder Terms of Use",
     "path": "dataset/raw-data/atcoder_abc",
-    "sha256": "TBD"
+    "sha256": "49dc91b7bb4a50aa481dc62384d322df6672b49a54d7173e7729c78c35aa341c"
   },
   {
     "name": "Kattis-micro",
-    "license": "TBD",
+    "license": "Kattis Terms of Service",
     "path": "dataset/raw-data/kattis_micro",
-    "sha256": "TBD"
+    "sha256": "acfae25447bdaaab0a0a4c66d97b50b11dc92ed18a4a5a57d021789b8f20b687"
   },
   {
     "name": "HumanEval-CPP",
     "license": "MIT",
     "path": "dataset/raw-data/humaneval_cpp.jsonl",
-    "sha256": "TBD"
+    "sha256": "1d49078ba3e2b196b9344535bef34a43021f038fad9561d6ee7c53450609a6a2"
   }
 ]
