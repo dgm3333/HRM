@@ -100,9 +100,11 @@ Signals (0–1 scaled), averaged with tuned weights:
   * `runner`: minimal runtime per language + nsjail/isolate binaries.
 * **Make/Hydra**
 
-  * `make data DATASET=mbpp-s`
-  * `make train CFG=token_baseline`
-  * `make eval CKPT=...`
+* `make data ARGS='--catalog docs/dataset_catalog.json'`
+* `make train ARGS='model.learning_rate=1e-3'`
+* `make eval ARGS='results.json reports/'`
+* `make report ARGS='results.json reports/summary'`
+* `make tooling`
 * **GitHub Actions**
 
   * Lint & unit tests for harness.

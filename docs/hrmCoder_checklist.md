@@ -50,7 +50,7 @@ Save new code files in: C:\repos\hrm-coder
         - Added report target generating Markdown/HTML summaries from evaluation results
         - Added test target running pytest and ctest suites
         - Added tooling target combining lint and test
-        ~ Document train and eval target usage examples
+        - Document train and eval target usage examples
         ~ Add coverage target aggregating ctest and pytest results
     [~] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
