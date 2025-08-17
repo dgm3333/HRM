@@ -14,6 +14,7 @@ Save new code files in: C:\repos\hrm-coder
 ** [~] Phase 0: Discovery & Reuse Audit
     [X] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
     [~] Setup project operation within isolate/gVisor runner images
+        - Added run_in_sandbox utility script for executing arbitrary commands in the selected sandbox backend
     [~] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
         - Added sandbox detection utility for isolate, nsjail, and gVisor runsc runtime
         - Added default sandbox selection helper to prefer isolate and fall back to nsjail or runsc
