@@ -9,6 +9,7 @@ toolchain components.
 from __future__ import annotations
 
 import argparse
+import json
 from typing import Any, Dict
 
 from .inventory import inventory_package, find_injection_points
@@ -62,9 +63,17 @@ def main() -> None:  # pragma: no cover - exercised via tests
     parser.add_argument(
         "--package", default="hrm", help="Python package to inspect"
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="emit machine-readable JSON instead of text",
+    )
     args = parser.parse_args()
     data = perform_audit(args.package)
-    _print_audit(data)
+    if args.json:
+        print(json.dumps(data, indent=2, sort_keys=True))
+    else:
+        _print_audit(data)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

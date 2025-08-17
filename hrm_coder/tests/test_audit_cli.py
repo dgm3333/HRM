@@ -1,3 +1,4 @@
+import json
 import sys
 
 import hrm_coder.audit_cli as audit_cli
@@ -59,3 +60,20 @@ def test_main_prints(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "Injection points:" in out
     assert "a.b" in out
+
+
+def test_main_json(monkeypatch, capsys):
+    monkeypatch.setattr(
+        audit_cli,
+        "perform_audit",
+        lambda pkg: {
+            "injection_points": ["a.b"],
+            "sandboxes": {},
+            "toolchains": {},
+        },
+    )
+    monkeypatch.setattr(sys, "argv", ["audit_cli", "--json"])
+    audit_cli.main()
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["injection_points"] == ["a.b"]
