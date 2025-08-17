@@ -70,7 +70,7 @@ def test_memory_limit_enforced(tmp_path: pathlib.Path) -> None:
     result = run_io_harness([src], tests, memory_limit_kb=1024, sanitize=False)
     assert not result["results"][0]["passed"]
     summary = summarize_result(result)
-    assert summary["verdict"] in {"ML", "RE"}
+    assert summary["verdict"] == "ML"
 
 
 def test_compile_error(tmp_path: pathlib.Path) -> None:
