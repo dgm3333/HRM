@@ -1,10 +1,4 @@
 import subprocess
-import sys
-from pathlib import Path
-
-import pytest
-
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from runners.nsjail import NSJailRunner
 
@@ -18,9 +12,11 @@ def test_build_command_defaults():
     assert cmd[0] == "nsjail"
     assert "-Mo" in cmd
     assert "--disable_clone_newnet" not in cmd
-    assert f"--time_limit=1" in cmd
+    assert "--time_limit=2" in cmd
+    assert "--rlimit_cpu=1" in cmd
+    assert f"--cgroup_mem_max={1024 * 1024}" in cmd
     assert f"--rlimit_as={1024 * 1024}" in cmd
-    assert f"--cgroup_pids_max=1" in cmd
+    assert "--cgroup_pids_max=1" in cmd
     assert cmd[-2:] == ["/bin/echo", "hi"]
 
 
@@ -29,6 +25,7 @@ def test_build_command_with_options():
     cmd = runner.build_command(
         ["/bin/true"],
         time_limit=1,
+        wall_time=3,
         memory=2048,
         processes=2,
         network=True,
@@ -38,10 +35,14 @@ def test_build_command_with_options():
         fsize=64,
     )
     assert "--disable_clone_newnet" in cmd
+    assert "--time_limit=3" in cmd
+    assert "--rlimit_cpu=1" in cmd
+    assert f"--cgroup_mem_max={2048 * 1024}" in cmd
+    assert f"--rlimit_as={2048 * 1024}" in cmd
     assert "--cwd" in cmd and "--bindmount" in cmd
-    assert f"/tmp/work:/tmp/work" in cmd
+    assert "/tmp/work:/tmp/work" in cmd
     assert "--bindmount_ro" in cmd
-    assert f"/data:/data" in cmd
+    assert "/data:/data" in cmd
     assert "--env" in cmd and "FOO=BAR" in cmd
     assert "--rlimit_fsize=64" in cmd
 

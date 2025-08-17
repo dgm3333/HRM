@@ -1,8 +1,5 @@
 from pathlib import Path
 import subprocess
-import sys
-
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from runners.isolate import IsolateRunner
 
@@ -19,6 +16,10 @@ def test_build_command_has_no_network_by_default():
     assert cmd[0] == "isolate"
     assert f"--box-id={runner.box_id}" in cmd
     assert "--net=none" in cmd
+    assert "--time=1" in cmd
+    assert "--wall=2" in cmd
+    assert "--mem=1024" in cmd
+    assert "--processes=1" in cmd
     assert "--run" in cmd
     run_idx = cmd.index("--run")
     assert cmd[run_idx + 1] == "--"
@@ -43,7 +44,10 @@ def test_build_command_with_filesystem_options():
 
 def test_build_command_with_env():
     runner = IsolateRunner(isolate_path="isolate", box_id=2)
-    cmd = runner.build_command(["/bin/true"], env={"LD_LIBRARY_PATH": "/libs", "FOO": "BAR"})
+    cmd = runner.build_command(
+        ["/bin/true"],
+        env={"LD_LIBRARY_PATH": "/libs", "FOO": "BAR"},
+    )
     assert "--env=LD_LIBRARY_PATH=/libs" in cmd
     assert "--env=FOO=BAR" in cmd
 
@@ -51,7 +55,10 @@ def test_build_command_with_env():
 def test_build_command_with_output_limits():
     runner = IsolateRunner(isolate_path="isolate", box_id=3)
     cmd = runner.build_command(
-        ["/bin/true"], stdout="out.txt", stderr="err.txt", fsize=64
+        ["/bin/true"],
+        stdout="out.txt",
+        stderr="err.txt",
+        fsize=64,
     )
     assert "--stdout=out.txt" in cmd
     assert "--stderr=err.txt" in cmd
@@ -86,4 +93,3 @@ def test_run_truncates_output(monkeypatch, tmp_path):
     assert proc.stdout == "A" * 10
     assert proc.stderr == "B" * 10
     assert captured["workdir"] is not None
-
