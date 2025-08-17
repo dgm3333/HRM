@@ -141,7 +141,9 @@ Save new code files in: C:\repos\hrm-coder
     [X] Add ablation job configs and comparison report against token baseline
 
 ** [ ] Phase 10: C++ Runner and Codeforces Integration (v2)
-    [~] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
+    [X] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
+        - Default flags: `-std=c++17 -O2 -pipe -Wall -Wextra -fdiagnostics-color=never`
+        - Structured parsing of compiler warnings and errors
     [~] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
         - Injected default ASAN_OPTIONS and UBSAN_OPTIONS in run_binary for deterministic sanitized runs
         - Added BinarySandboxAdapter to route compiled binaries through sandbox with sanitizer environment

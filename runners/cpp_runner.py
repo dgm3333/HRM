@@ -49,6 +49,7 @@ class CompileResult:
     success: bool
     stdout: str
     stderr: str
+    cmd: List[str]
     binary: Optional[Path]
     warnings: int
     errors: int
@@ -149,13 +150,14 @@ def compile_cpp_sources(
     warnings = sum(d.level == "warning" for d in diags)
     errors = sum(d.level == "error" for d in diags)
     return CompileResult(
-        success,
-        proc.stdout,
-        proc.stderr,
-        output_path if success else None,
-        warnings,
-        errors,
-        diags,
+        success=success,
+        stdout=proc.stdout,
+        stderr=proc.stderr,
+        cmd=cmd,
+        binary=output_path if success else None,
+        warnings=warnings,
+        errors=errors,
+        diagnostics=diags,
     )
 
 
@@ -222,13 +224,14 @@ def compile_shared_library(
     warnings = sum(d.level == "warning" for d in diags)
     errors = sum(d.level == "error" for d in diags)
     return CompileResult(
-        success,
-        proc.stdout,
-        proc.stderr,
-        output_path if success else None,
-        warnings,
-        errors,
-        diags,
+        success=success,
+        stdout=proc.stdout,
+        stderr=proc.stderr,
+        cmd=cmd,
+        binary=output_path if success else None,
+        warnings=warnings,
+        errors=errors,
+        diagnostics=diags,
     )
 
 
@@ -297,13 +300,14 @@ def compile_static_library(
         total_errors += sum(d.level == "error" for d in diags)
         if proc.returncode != 0:
             return CompileResult(
-                False,
-                "".join(stdout_parts),
-                "".join(stderr_parts),
-                None,
-                total_warnings,
-                total_errors,
-                diagnostics,
+                success=False,
+                stdout="".join(stdout_parts),
+                stderr="".join(stderr_parts),
+                cmd=cmd,
+                binary=None,
+                warnings=total_warnings,
+                errors=total_errors,
+                diagnostics=diagnostics,
             )
         objs.append(obj_path)
 
@@ -319,13 +323,14 @@ def compile_static_library(
     stderr_parts.append(ar_proc.stderr)
     success = ar_proc.returncode == 0
     return CompileResult(
-        success,
-        "".join(stdout_parts),
-        "".join(stderr_parts),
-        output_path if success else None,
-        total_warnings,
-        total_errors,
-        diagnostics,
+        success=success,
+        stdout="".join(stdout_parts),
+        stderr="".join(stderr_parts),
+        cmd=ar_cmd,
+        binary=output_path if success else None,
+        warnings=total_warnings,
+        errors=total_errors,
+        diagnostics=diagnostics,
     )
 
 
