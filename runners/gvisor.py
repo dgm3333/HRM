@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Mapping, Optional
 
 
 class SandboxError(RuntimeError):
@@ -12,7 +12,7 @@ class SandboxError(RuntimeError):
 
 
 class GVisorRunner:
-    """Adapter that runs commands inside a Docker container with gVisor runtime.
+    """Adapter that runs commands inside a Docker container using gVisor.
 
     This runner constructs ``docker run`` invocations that leverage the
     ``runsc`` runtime provided by gVisor.  Only a subset of Docker's resource
@@ -22,7 +22,9 @@ class GVisorRunner:
     without a full container environment.
     """
 
-    def __init__(self, *, docker_path: str = "docker", image: str = "ubuntu:latest") -> None:
+    def __init__(
+        self, *, docker_path: str = "docker", image: str = "ubuntu:latest"
+    ) -> None:
         self.docker_path = docker_path
         self.image = image
 
@@ -36,8 +38,10 @@ class GVisorRunner:
         network: bool = False,
         workdir: Optional[str] = None,
         readonly_dirs: Optional[Iterable[str]] = None,
+        env: Optional[Mapping[str, str]] = None,
     ) -> List[str]:
-        """Build a ``docker run`` command that executes ``command`` under gVisor.
+        """Build a ``docker run`` command that executes ``command`` under
+        gVisor.
 
         Parameters
         ----------
@@ -56,13 +60,16 @@ class GVisorRunner:
         readonly_dirs:
             Iterable of host paths to mount read-only inside the container at
             the same paths.
+        env:
+            Optional mapping of environment variables to define inside the
+            container.
         """
         docker_cmd = [
             self.docker_path,
             "run",
             "--rm",
             "--runtime=runsc",
-            f"--cpus=1",
+            "--cpus=1",
             f"--pids-limit={processes}",
             f"--memory={memory}k",
         ]
@@ -73,6 +80,9 @@ class GVisorRunner:
         if readonly_dirs is not None:
             for path in readonly_dirs:
                 docker_cmd.extend(["-v", f"{path}:{path}:ro"])
+        if env is not None:
+            for key, value in env.items():
+                docker_cmd.extend(["-e", f"{key}={value}"])
         docker_cmd.append(self.image)
         docker_cmd.extend(command)
         return docker_cmd
@@ -87,11 +97,16 @@ class GVisorRunner:
         network: bool = False,
         workdir: Optional[str] = None,
         readonly_dirs: Optional[Iterable[str]] = None,
+        env: Optional[Mapping[str, str]] = None,
         stdin: Optional[bytes] = None,
+        stdout_limit: Optional[int] = None,
+        stderr_limit: Optional[int] = None,
     ) -> subprocess.CompletedProcess:
         """Execute ``command`` inside a gVisor-backed Docker container."""
         if shutil.which(self.docker_path) is None:
-            raise SandboxError(f"docker executable not found: {self.docker_path}")
+            raise SandboxError(
+                f"docker executable not found: {self.docker_path}"
+            )
         cmd = self.build_command(
             command,
             time_limit=time_limit,
@@ -100,11 +115,21 @@ class GVisorRunner:
             network=network,
             workdir=workdir,
             readonly_dirs=readonly_dirs,
+            env=env,
         )
-        return subprocess.run(
+        proc = subprocess.run(
             cmd,
             input=stdin,
             capture_output=True,
             text=True,
             check=False,
+        )
+        stdout_data = proc.stdout
+        stderr_data = proc.stderr
+        if stdout_limit is not None:
+            stdout_data = stdout_data[:stdout_limit]
+        if stderr_limit is not None:
+            stderr_data = stderr_data[:stderr_limit]
+        return subprocess.CompletedProcess(
+            cmd, proc.returncode, stdout_data, stderr_data
         )
