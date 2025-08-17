@@ -62,6 +62,7 @@ Save new code files in: C:\repos\hrm-coder
     [~] Integrate DVC pipelines and data/versions.yml locking
         - Added version verification utility and catalog build check
         - Added catalog-wide version verification script
+        - Added CLI for generating DVC pipeline stage YAML
     [X] Add dataset schema contracts and unit tests for loaders
     [X] Implement dataset split manager for train/val/test with fixed seeds
 
