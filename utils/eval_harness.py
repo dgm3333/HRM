@@ -94,28 +94,77 @@ def detect_flaky_tests(run_results: List[Dict[str, bool]]) -> List[str]:
     return flaky
 
 
-def generate_report(metrics: Dict[str, Any], path: str) -> None:
+def aggregate_cpp_metrics(data: Dict[str, Dict[str, Any]]) -> Dict[str, float]:
+    """Aggregate C++-specific metrics from per-task results.
+
+    Parameters
+    ----------
+    data:
+        Mapping from task identifier to dictionaries containing keys such as
+        ``compile_status``, ``compile_warnings`` and ``coverage``.
+
+    Returns
+    -------
+    Dict[str, float]
+        Summary metrics including ``compile_success_rate``,
+        ``avg_compile_warnings`` and ``avg_coverage``.
+    """
+
+    total = len(data)
+    if total == 0:
+        return {
+            "compile_success_rate": 0.0,
+            "avg_compile_warnings": 0.0,
+            "avg_coverage": 0.0,
+        }
+
+    success = sum(
+        1 for m in data.values() if m.get("compile_status") == "success"
+    )
+    warnings = sum(int(m.get("compile_warnings", 0)) for m in data.values())
+    coverages = [
+        float(m.get("coverage"))
+        for m in data.values()
+        if m.get("coverage") is not None
+    ]
+    avg_cov = sum(coverages) / len(coverages) if coverages else 0.0
+    return {
+        "compile_success_rate": success / total,
+        "avg_compile_warnings": warnings / total,
+        "avg_coverage": avg_cov,
+    }
+
+
+def generate_report(
+    metrics: Dict[str, Any],
+    path: str,
+    extra_metrics: Dict[str, float] | None = None,
+) -> None:
     """Generate a simple report containing ``metrics``.
 
     The format is inferred from ``path`` extension: ``.md`` for Markdown,
     ``.html`` for HTML and any other extension for JSON.
+    ``extra_metrics`` can be provided to include additional metrics such as
+    aggregated C++ outcomes.
     """
+    data = dict(metrics)
+    if extra_metrics:
+        data.update(extra_metrics)
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     if p.suffix.lower() == ".md":
         lines = ["# Evaluation Report", ""]
-        for key, value in metrics.items():
+        for key, value in data.items():
             lines.append(f"- **{key}**: {value}")
         p.write_text("\n".join(lines))
     elif p.suffix.lower() in {".html", ".htm"}:
         rows = "\n".join(
-            f"<tr><th>{key}</th><td>{value}</td></tr>"
-            for key, value in metrics.items()
+            f"<tr><th>{key}</th><td>{value}</td></tr>" for key, value in data.items()
         )
         html = f"<html><body><table>{rows}</table></body></html>"
         p.write_text(html)
     else:
-        p.write_text(json.dumps(metrics, indent=2))
+        p.write_text(json.dumps(data, indent=2))
 
 
 def bundle_artifacts(paths: Iterable[str], bundle_path: str) -> None:

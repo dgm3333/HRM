@@ -118,7 +118,8 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
     overrides:
         Optional sequence of Hydra override strings.
     """
-    config_dir = Path(__file__).parent / "conf"
+    config_dir = Path(__file__).resolve().parent / "conf"
+    project_root = config_dir.parent.parent
     with initialize_config_dir(version_base=None, config_dir=str(config_dir)):
         cfg = compose(
             config_name="config",
@@ -134,8 +135,12 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
         comp, _ = toolchain_detector.select_compiler()
         runner_cfg.compiler = comp or "g++"
 
+    def resolve_path(p: str) -> Path:
+        path = Path(p)
+        return (path if path.is_absolute() else project_root / path).resolve()
+
     paths_cfg = PathsConfig(
-        **{k: Path(v) for k, v in cfg_dict["paths"].items()}
+        **{k: resolve_path(v) for k, v in cfg_dict["paths"].items()}
     )
 
     return AppConfig(

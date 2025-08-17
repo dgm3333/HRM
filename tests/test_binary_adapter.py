@@ -46,6 +46,7 @@ def test_binary_adapter_injects_sanitizers(tmp_path: Path) -> None:
     assert runner.env["UBSAN_OPTIONS"] == SANITIZER_ENV["UBSAN_OPTIONS"]
 
 
+
 def _compile_env_printer(tmp_path: Path):
     src = tmp_path / "main.cpp"
     src.write_text(
@@ -147,3 +148,29 @@ sys.exit(res.returncode)
     assert code == 0
     assert SANITIZER_ENV["ASAN_OPTIONS"] in out
     assert SANITIZER_ENV["UBSAN_OPTIONS"] in err
+
+
+def test_binary_adapter_passes_limits(tmp_path: Path) -> None:
+    src = tmp_path / "main.cpp"
+    src.write_text("int main(){return 0;}")
+    res = compile_cpp(src)
+    assert res.success and res.binary is not None
+
+    class CaptureRunner:
+        def __init__(self) -> None:
+            self.kwargs = None
+
+        def run(self, cmd, **kwargs):
+            self.kwargs = kwargs
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    runner = CaptureRunner()
+    adapter = BinarySandboxAdapter(runner)
+    adapter.run(res.binary, timeout=3, memory_limit=4096)
+    assert runner.kwargs is not None
+    assert runner.kwargs["time_limit"] == 3
+    assert runner.kwargs["wall_time"] == 3
+    assert runner.kwargs["memory"] == 4  # 4096 bytes -> 4 KB
+    assert runner.kwargs["network"] is False
+    assert runner.kwargs["processes"] == 1
+

@@ -110,3 +110,41 @@ int main() {
     rc, _out, err = _run(binary)
     assert rc != 0
     assert classify_runtime(rc, err) in {"policy_violation", "runtime_error"}
+
+
+def test_memory_exhaustion_blocked(tmp_path):
+    code = r"""
+#include <stdlib.h>
+
+int main() {
+    while (1) {
+        void* p = malloc(1024 * 1024);
+        if (!p) {
+            return 1;
+        }
+    }
+    return 0;
+}
+"""
+    binary = _compile(code, tmp_path)
+    rc, _out, err = _run(binary)
+    assert rc != 0
+    assert classify_runtime(rc, err) in {"policy_violation", "runtime_error"}
+
+
+def test_ptrace_denied(tmp_path):
+    code = r"""
+#include <sys/ptrace.h>
+
+int main() {
+    long res = ptrace(PTRACE_TRACEME, 0, 0, 0);
+    if (res == -1) {
+        return 1;
+    }
+    return 0;
+}
+"""
+    binary = _compile(code, tmp_path)
+    rc, _out, err = _run(binary)
+    assert rc != 0
+    assert classify_runtime(rc, err) == "policy_violation"

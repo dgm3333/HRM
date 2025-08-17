@@ -13,7 +13,7 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [~] Phase 0: Discovery & Reuse Audit
     [X] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
-    [~] Setup project operation within isolate/gVisor runner images
+    [?] Setup project operation within isolate/gVisor runner images
         - Added run_in_sandbox utility script for executing arbitrary commands in the selected sandbox backend
     [~] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
         - Added sandbox detection utility for isolate, nsjail, and gVisor runsc runtime
@@ -23,26 +23,27 @@ Save new code files in: C:\repos\hrm-coder
         - Added sandbox smoke test script to verify basic command execution in available backends
         - Added audit CLI with optional JSON output for programmatic environment checks
         - Added environment variable and output limit support to gVisor runner
-        ~ Document feature parity matrix for isolate, nsjail, and gVisor adapters
-        ~ Add integration tests verifying resource limit enforcement across adapters
+        - Documented feature parity matrix for isolate, nsjail, and gVisor adapters
+        - Added integration tests verifying resource limit enforcement across adapters
         ~ Investigate file size limit enforcement support in gVisor runner
-    [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
+    [X] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
         - Added dataset catalog utility with hash validation and unit tests
-        ~ Populate dataset licenses and SHA256 hashes in docs/dataset_catalog.json
+        - Populated dataset licenses and SHA256 hashes in docs/dataset_catalog.json
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
-    [~] Draft sandbox Threat Model and initial security requirements for native binaries
+    [X] Draft sandbox Threat Model and initial security requirements for native binaries
+        - Added sandbox threat model doc outlining assets, actors, threats, and mitigations
     [X] Write ADRs for sandbox choice, experiment tracker, and GUI stack
         - Added ADR 0001 detailing isolate as default sandbox with nsjail/runsc fallbacks
         - Added ADR 0002 selecting MLflow for experiment tracking
         - Added ADR 0003 choosing FastAPI with htmx/Tailwind for the GUI stack
-    [?] Create initial risk register and mitigation plan
-        - Added initial risk register and mitigation plan docs
+    [X] Create initial risk register and mitigation plan
+        - Added and reviewed initial risk register and mitigation plan docs
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
     [X] Generate project layout scaffold script for hrm-coder directory tree
     [X] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
         - Installed coverage utilities and compiled gtest; locale/timezone pinned for determinism
-    [~] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
+    [?] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
     [~] Create Makefile targets for data, train, eval, report, and tooling (CMake + ctest integration)
         - Added build_trainer target for trainer Docker image
         - Added lint target invoking pre-commit hooks
@@ -50,14 +51,14 @@ Save new code files in: C:\repos\hrm-coder
         - Added report target generating Markdown/HTML summaries from evaluation results
         - Added test target running pytest and ctest suites
         - Added tooling target combining lint and test
-        ~ Document train and eval target usage examples
+        - Document train and eval target usage examples
         ~ Add coverage target aggregating ctest and pytest results
-    [~] Define Hydra config schema and default configs under conf/
+    [X] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
         - Added helper to instantiate sandbox runners from configuration
         - Added network access toggle to runner config defaults
-        ~ Add paths configuration group for dataset, runs, and artifact directories
-        ~ Add unit test covering config loading and path resolution
+        - Added paths configuration group for dataset, runs, and artifact directories
+        - Added unit test covering config loading and path resolution
     [X] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
         - Added Makefile lint target to run pre-commit
     [X] Implement environment pinning and seed/tz/locale normalization module
@@ -88,13 +89,14 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement dataset split manager for train/val/test with fixed seeds
 
 ** [~] Phase 4: Sandbox Executor
-    [?] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
+    [X] Implement isolate/nsjail adapter with CPU, RAM, wall time, and net-off policies
+        - BinarySandboxAdapter enforces process, memory, and time caps with network disabled by default
     [X] Implement C++ build-and-run pipeline (CMake/g++/clang++) with JUnit XML via GoogleTest
     [X] Add filesystem policy: temp working dir, RO mounts, stdout/stderr caps
     [X] Implement caching layer keyed by prompt+code+tests+limits hash
     [X] Implement standalone I/O judge with whitespace-normalized diff and caching
     [X] Implement error taxonomy parser for compile, link, runtime, timeout, and policy violations
-    [~] Create malicious sample integration tests (file read, fork bomb, excessive forks, socket open)
+    [X] Create malicious sample integration tests (file read, fork bomb, excessive forks, socket open)
 
 ** [?] Phase 5: Reward Shaping and Safety Gates
     [X] Implement reward aggregator with weighted compile/link status, tests, and coverage signals
@@ -139,18 +141,20 @@ Save new code files in: C:\repos\hrm-coder
     [X] Add ablation job configs and comparison report against token baseline
 
 ** [ ] Phase 10: C++ Runner and Codeforces Integration (v2)
-    [~] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
+    [X] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
+        - Default flags: `-std=c++17 -O2 -pipe -Wall -Wextra -fdiagnostics-color=never`
+        - Structured parsing of compiler warnings and errors
     [~] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
         - Injected default ASAN_OPTIONS and UBSAN_OPTIONS in run_binary for deterministic sanitized runs
         - Added BinarySandboxAdapter to route compiled binaries through sandbox with sanitizer environment
         - Added integration tests exercising BinarySandboxAdapter with nsjail and gVisor backends
         ~ Document adapter usage and sanitizer configuration in developer docs
     [?] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
-    [~] Configure static versus dynamic linking inside jail with rpath handling and ccache
+    [?] Configure static versus dynamic linking inside jail with rpath handling and ccache
         - Added compile wrapper support for include paths, library directories, rpath, optional static builds, and ccache
         - Added helpers for building shared and static libraries to support library stubs in multi-file projects
         - Extended shared library builder with include, library, and rpath options for linking against dependent libraries
-        ~ Implement automatic $ORIGIN-based rpath injection for bundled libraries
-        ~ Add sandboxed integration tests for dynamic and static linking paths
-    [ ] Create C++ security test suite for resource abuse and restricted syscalls
-    [ ] Integrate C++ metrics and outcomes into common evaluator and reports
+        - Implement automatic $ORIGIN-based rpath injection for bundled libraries
+        - Add sandboxed integration tests for dynamic and static linking paths
+    [X] Create C++ security test suite for resource abuse and restricted syscalls
+    [X] Integrate C++ metrics and outcomes into common evaluator and reports
