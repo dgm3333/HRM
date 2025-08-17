@@ -1,9 +1,11 @@
 .PHONY: data build_runner build_trainer train eval report lint smoke cpp-build cpp-test
 
-# Placeholder targets for Phase 1 scaffold
+# Phase 1 scaffold targets
+
+DATA_OUT ?= data/processed
 
 data:
-	@echo "Data pipeline not implemented yet"
+        python scripts/build_data.py --output $(DATA_OUT) $(ARGS)
 
 build_runner:
         docker build -f runner.Dockerfile -t hrm-runner .
