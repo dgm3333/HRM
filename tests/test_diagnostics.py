@@ -9,6 +9,7 @@ from utils.diagnostics import (
     coverage_delta,
     compiler_diagnostics,
     diagnostics_score,
+    parse_compiler_diagnostics,
 )
 
 
@@ -34,6 +35,15 @@ def test_compiler_diagnostics():
     warnings, errors = compiler_diagnostics(stdout, stderr)
     assert warnings == 1
     assert errors == 1
+
+
+def test_parse_compiler_diagnostics():
+    stdout = ""
+    stderr = "main.cpp:3:4: warning: foo\nmain.cpp:5:6: error: bar\n"
+    diags = parse_compiler_diagnostics(stdout, stderr)
+    levels = {d.level for d in diags}
+    assert "warning" in levels and "error" in levels
+    assert diags[0].file == "main.cpp"
 
 
 def test_diagnostics_score():

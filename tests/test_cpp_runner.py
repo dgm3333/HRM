@@ -229,6 +229,14 @@ def test_warning_count(tmp_path: Path) -> None:
     assert res.warnings >= 1
 
 
+def test_diagnostic_details(tmp_path: Path) -> None:
+    src = tmp_path / "warn.cpp"
+    src.write_text("int main(){int x; return 0;}")
+    res = compile_cpp_sources([src], flags=["-Wall"], sanitize=False)
+    assert any(d.level == "warning" for d in res.diagnostics)
+    assert res.diagnostics[0].file.endswith("warn.cpp")
+
+
 def test_run_binary_passes_env_to_sandbox(tmp_path: Path) -> None:
     lib_src = tmp_path / "double.cpp"
     lib_src.write_text('extern "C" int times_two(int x){return 2*x;}\n')

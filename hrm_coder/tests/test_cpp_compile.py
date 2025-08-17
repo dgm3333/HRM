@@ -34,6 +34,9 @@ def test_compile_with_warning(tmp_path: Path) -> None:
     result = compile_cpp([src], out, flags=["-Wall"])
     assert result.success
     assert result.warnings  # unused variable x should trigger warning
+    diag = result.warnings[0]
+    assert diag.level == "warning"
+    assert "unused" in diag.message
 
 
 def test_compile_with_include_and_lib(tmp_path: Path) -> None:
