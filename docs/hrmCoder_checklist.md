@@ -144,11 +144,11 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
         - Default flags: `-std=c++17 -O2 -pipe -Wall -Wextra -fdiagnostics-color=never`
         - Structured parsing of compiler warnings and errors
-    [~] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
+    [?] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
         - Injected default ASAN_OPTIONS and UBSAN_OPTIONS in run_binary for deterministic sanitized runs
         - Added BinarySandboxAdapter to route compiled binaries through sandbox with sanitizer environment
         - Added integration tests exercising BinarySandboxAdapter with nsjail and gVisor backends
-        ~ Document adapter usage and sanitizer configuration in developer docs
+        - Documented adapter usage and sanitizer configuration in developer docs
     [?] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
     [?] Configure static versus dynamic linking inside jail with rpath handling and ccache
         - Added compile wrapper support for include paths, library directories, rpath, optional static builds, and ccache
