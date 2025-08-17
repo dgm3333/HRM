@@ -235,7 +235,7 @@ Stubbed early with mock run objects and static artifact samples.
 
 ### P10 – Extended Judges & Linking (v2)
 
-* Multi-file projects; library stubs; rpath handling for dynamic builds in jail.
+* Multi-file projects; library stubs; automatic `$ORIGIN` rpath handling for dynamic builds in jail.
 * Optional **static** builds where feasible; **ccache** for speed.
 * Additional datasets (Kattis micro-set) with license review.
 * Security suite expansion (syscall denylist regression).
