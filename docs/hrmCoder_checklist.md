@@ -23,8 +23,8 @@ Save new code files in: C:\repos\hrm-coder
         - Added sandbox smoke test script to verify basic command execution in available backends
         - Added audit CLI with optional JSON output for programmatic environment checks
         - Added environment variable and output limit support to gVisor runner
-        ~ Document feature parity matrix for isolate, nsjail, and gVisor adapters
-        ~ Add integration tests verifying resource limit enforcement across adapters
+        - Documented feature parity matrix for isolate, nsjail, and gVisor adapters
+        - Added integration tests verifying resource limit enforcement across adapters
         ~ Investigate file size limit enforcement support in gVisor runner
     [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
         - Added dataset catalog utility with hash validation and unit tests
