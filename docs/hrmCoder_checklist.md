@@ -30,7 +30,8 @@ Save new code files in: C:\repos\hrm-coder
         - Added dataset catalog utility with hash validation and unit tests
         - Populated dataset licenses and SHA256 hashes in docs/dataset_catalog.json
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
-    [~] Draft sandbox Threat Model and initial security requirements for native binaries
+    [X] Draft sandbox Threat Model and initial security requirements for native binaries
+        - Added sandbox threat model doc outlining assets, actors, threats, and mitigations
     [X] Write ADRs for sandbox choice, experiment tracker, and GUI stack
         - Added ADR 0001 detailing isolate as default sandbox with nsjail/runsc fallbacks
         - Added ADR 0002 selecting MLflow for experiment tracking
