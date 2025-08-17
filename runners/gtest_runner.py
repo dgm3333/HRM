@@ -12,11 +12,13 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence
 from xml.etree import ElementTree as ET
 
 from .isolate import IsolateRunner, SandboxError
 from .sandbox_cache import SandboxCache
+from .cpp_runner import compile_cpp_sources, DEFAULT_FLAGS
+from .error_taxonomy import classify_compile
 
 
 class GTestExecutionError(RuntimeError):
@@ -194,3 +196,122 @@ def run_gtests(
     if cache is not None and key is not None:
         cache.store(key, result)
     return result
+
+
+def compile_and_run_gtests(
+    sources: Sequence[Path],
+    *,
+    compiler: str = "g++",
+    flags: Optional[Iterable[str]] = None,
+    sanitize: bool = True,
+    sandbox: Optional[IsolateRunner] = None,
+    cache: Optional[SandboxCache] = None,
+    time_limit: int = 5,
+    wall_time: int = 5,
+    memory: int = 256 * 1024,
+    collect_coverage: bool = False,
+    stdout_limit: int = 10_000,
+    stderr_limit: int = 10_000,
+) -> Dict[str, object]:
+    """Compile ``sources`` into a gtest binary and execute it.
+
+    This helper advances Phase 4's C++ sandbox executor by combining the
+    compilation and execution steps into a single function.  Source files are
+    compiled with GoogleTest linkage and the resulting binary is run via
+    :func:`run_gtests`.  Compilation diagnostics and parsed gtest results are
+    returned in a single dictionary.  Results can be memoized with a
+    :class:`SandboxCache` instance keyed by the sources and resource limits.
+
+    Parameters
+    ----------
+    sources:
+        Sequence of C++ source files comprising the test binary.
+    compiler:
+        Which compiler to invoke, e.g. ``g++`` or ``clang++``.
+    flags:
+        Additional compiler flags to apply. Default flags include
+        ``-std=c++17``, ``-O2`` and ``-pipe``.
+    sanitize:
+        When ``True`` address and undefined behaviour sanitizers are enabled.
+    sandbox:
+        Optional :class:`IsolateRunner` enforcing resource limits during
+        execution.
+    cache:
+        Optional :class:`SandboxCache` used to memoize end-to-end results.
+    time_limit, wall_time, memory:
+        Resource limits forwarded to :func:`run_gtests`.
+    collect_coverage:
+        When ``True`` compile and run with coverage instrumentation and return
+        a ``coverage`` ratio.
+    stdout_limit, stderr_limit:
+        Maximum sizes for captured ``stdout`` and ``stderr`` during execution.
+    """
+
+    compile_flags = list(flags) if flags is not None else list(DEFAULT_FLAGS)
+    compile_flags.append("-pthread")
+    if collect_coverage:
+        compile_flags.append("--coverage")
+
+    key: Optional[str] = None
+    if cache is not None:
+        parts = [Path(s).read_bytes() for s in sources]
+        for f in sorted(compile_flags):
+            parts.append(f.encode())
+        parts.append(compiler.encode())
+        parts.append(b"sanitize" if sanitize else b"no_sanitize")
+        parts.append(str(time_limit).encode())
+        parts.append(str(wall_time).encode())
+        parts.append(str(memory).encode())
+        if collect_coverage:
+            parts.append(b"coverage")
+        key = cache.hash_parts(parts)
+        cached = cache.load(key)
+        if cached is not None:
+            return cached
+
+    compile_res = compile_cpp_sources(
+        sources,
+        compiler=compiler,
+        flags=compile_flags,
+        sanitize=sanitize,
+        libraries=["gtest", "gtest_main"],
+    )
+    compile_status = classify_compile(compile_res.success, compile_res.stderr)
+    data: Dict[str, object] = {
+        "compile_stdout": compile_res.stdout,
+        "compile_stderr": compile_res.stderr,
+        "compile_warnings": compile_res.warnings,
+        "compile_errors": compile_res.errors,
+        "compile_status": compile_status,
+    }
+
+    if not compile_res.success or compile_res.binary is None:
+        data.update(
+            {
+                "tests": 0,
+                "failures": 0,
+                "errors": 0,
+                "cases": [],
+                "xml": "",
+            }
+        )
+        if cache is not None and key is not None:
+            cache.store(key, data)
+        return data
+
+    run_res = run_gtests(
+        compile_res.binary,
+        sandbox=sandbox,
+        time_limit=time_limit,
+        wall_time=wall_time,
+        memory=memory,
+        cache=None,
+        collect_coverage=collect_coverage,
+        sources=sources if collect_coverage else None,
+        stdout_limit=stdout_limit,
+        stderr_limit=stderr_limit,
+    )
+    data.update(run_res)
+    if cache is not None and key is not None:
+        cache.store(key, data)
+    return data
