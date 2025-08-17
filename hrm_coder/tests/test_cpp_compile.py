@@ -1,7 +1,11 @@
 from pathlib import Path
 import subprocess
 
-from hrm_coder.cpp_compile import compile_cpp
+from hrm_coder.cpp_compile import (
+    compile_cpp,
+    compile_shared_library,
+    compile_static_library,
+)
 
 
 def test_compile_success(tmp_path: Path) -> None:
@@ -67,3 +71,55 @@ def test_compile_with_include_and_lib(tmp_path: Path) -> None:
     assert "-L" in result.cmd and str(libdir) in result.cmd
     assert "-lfoo" in result.cmd
     assert f"-Wl,-rpath,{libdir}" in result.cmd
+
+
+def test_shared_library_build_and_link(tmp_path: Path) -> None:
+    """Build a shared library and link it into a main program."""
+    lib_src = tmp_path / "double.cc"
+    lib_src.write_text('extern "C" int times_two(int x){return 2*x;}\n')
+    lib_out = tmp_path / "libdouble.so"
+    lib_res = compile_shared_library([lib_src], lib_out)
+    assert lib_res.success
+
+    main = tmp_path / "main.cc"
+    main.write_text(
+        """
+#include <iostream>
+extern "C" int times_two(int);
+int main(){std::cout<<times_two(5);}
+"""
+    )
+    exe = tmp_path / "a.out"
+    res = compile_cpp(
+        [main],
+        exe,
+        lib_dirs=[tmp_path],
+        libs=["double"],
+        rpaths=[tmp_path],
+    )
+    assert res.success
+    run = subprocess.run([str(exe)], capture_output=True, text=True)
+    assert run.stdout.strip() == "10"
+
+
+def test_static_library_build_and_link(tmp_path: Path) -> None:
+    """Build a static library and link it into a main program."""
+    lib_src = tmp_path / "math.cc"
+    lib_src.write_text("int add(int a,int b){return a+b;}\n")
+    lib_out = tmp_path / "libmath.a"
+    lib_res = compile_static_library([lib_src], lib_out)
+    assert lib_res.success
+
+    main = tmp_path / "main.cc"
+    main.write_text(
+        """
+#include <iostream>
+extern int add(int,int);
+int main(){std::cout<<add(2,3);}
+"""
+    )
+    exe = tmp_path / "a.out"
+    res = compile_cpp([main], exe, lib_dirs=[tmp_path], libs=["math"])
+    assert res.success
+    run = subprocess.run([str(exe)], capture_output=True, text=True)
+    assert run.stdout.strip() == "5"
