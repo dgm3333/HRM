@@ -10,7 +10,12 @@ space" for Phase 9 of the HRM Coder roadmap.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from tree_sitter import Node
+from typing import Any
+
+try:  # pragma: no cover - optional dependency
+    from tree_sitter import Node
+except Exception:  # pragma: no cover - Tree-sitter not installed
+    Node = Any  # type: ignore[assignment]
 
 from utils.ast_edit import CppAst, EditResult
 

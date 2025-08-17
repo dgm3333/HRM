@@ -16,9 +16,12 @@ future learned cursor module.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Iterable, Optional, Protocol
+from typing import Any, Callable, Iterable, Optional, Protocol
 
-from tree_sitter import Node, Tree
+try:  # pragma: no cover - optional dependency
+    from tree_sitter import Node, Tree
+except Exception:  # pragma: no cover - Tree-sitter not installed
+    Node = Tree = Any  # type: ignore[assignment]
 
 
 Predicate = Callable[[Node], bool]
