@@ -19,12 +19,14 @@ on top with node embeddings and higher level edit policies.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
-from tree_sitter import Node, Tree
-try:  # pragma: no cover - import guard
+try:  # pragma: no cover - optional dependency
+    from tree_sitter import Node, Tree
     from tree_sitter_languages import get_parser
-except Exception as exc:  # pragma: no cover - runtime environment may lack compiled grammars
+    _PARSER_ERROR = None
+except Exception as exc:  # pragma: no cover - Tree-sitter not installed
+    Node = Tree = Any  # type: ignore[assignment]
     get_parser = None  # type: ignore[assignment]
     _PARSER_ERROR = exc
 

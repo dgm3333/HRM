@@ -14,13 +14,14 @@ this to richer embeddings (e.g. parent chains or typed edges).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
-
-from tree_sitter import Node, Parser, Tree
+from typing import Any, Dict, List, Tuple
 
 try:  # pragma: no cover - optional dependency may be missing
+    from tree_sitter import Node, Parser, Tree
     from tree_sitter_languages import get_parser
-except Exception as exc:  # pragma: no cover
+    _PARSER_ERROR = None
+except Exception as exc:  # pragma: no cover - Tree-sitter not installed
+    Node = Parser = Tree = Any  # type: ignore[assignment]
     get_parser = None  # type: ignore[assignment]
     _PARSER_ERROR = exc
 

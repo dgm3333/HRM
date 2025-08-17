@@ -10,14 +10,14 @@ on code tasks.
 
 from .code_tokenizer import CppTokenizer
 from .code_encoder import CodeEncoder
-from .ast_encoder import ASTEncoder, NodeTypeSchema
 from .training_loop import HRMTrainer, HRMTrainingConfig
 
-__all__ = [
-    "CppTokenizer",
-    "CodeEncoder",
-    "ASTEncoder",
-    "NodeTypeSchema",
-    "HRMTrainer",
-    "HRMTrainingConfig",
-]
+try:  # pragma: no cover - optional AST dependency
+    from .ast_encoder import ASTEncoder, NodeTypeSchema
+except Exception:  # pragma: no cover
+    ASTEncoder = None  # type: ignore[assignment]
+    NodeTypeSchema = None  # type: ignore[assignment]
+
+__all__ = ["CppTokenizer", "CodeEncoder", "HRMTrainer", "HRMTrainingConfig"]
+if ASTEncoder is not None:
+    __all__ += ["ASTEncoder", "NodeTypeSchema"]
