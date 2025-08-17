@@ -171,6 +171,8 @@ Stubbed early with mock run objects and static artifact samples.
 * **AtCoder ABC** builder: normalized I/O harness.
 * Determinism validator: re-run → identical verdicts/hashes; record toolchain.
 * DVC pipelines; schema contracts & unit tests; seeded splits.
+  `scripts/generate_dvc_yaml.py` emits the DVC stage tying the catalog to
+  `build_from_catalog` with `versions.yml` locks.
 
 ### P4 – Sandbox Executor (C++)
 

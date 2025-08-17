@@ -55,16 +55,17 @@ Save new code files in: C:\repos\hrm-coder
     [X] Provide GUI quickstart docs and sample configs
     [X] Expose coverage summary endpoint and display on run page
 
-** [ ] Phase 3: Deterministic Dataset Pipeline (C++)
+** [X] Phase 3: Deterministic Dataset Pipeline (C++)
     [X] Implement HumanEval-CPP builder with harness generator and reference solutions
     [X] Implement Codeforces-Intro builder (I/O testcases, constraints, per-problem time limits)
     [X] Implement AtCoder ABC subset builder with normalized input/output cases
     [X] Implement Kattis micro-set builder for additional I/O tasks
     [X] Write determinism validator to re-run and hash equality of artifacts
-    [~] Integrate DVC pipelines and data/versions.yml locking
+    [X] Integrate DVC pipelines and data/versions.yml locking
         - Added version verification utility and catalog build check
         - Added catalog-wide version verification script
         - Added CLI for generating DVC pipeline stage YAML
+        - Added convenience script `generate_dvc_yaml.py` for stage creation
     [X] Add dataset schema contracts and unit tests for loaders
     [X] Implement dataset split manager for train/val/test with fixed seeds
 
