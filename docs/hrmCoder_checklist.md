@@ -53,12 +53,12 @@ Save new code files in: C:\repos\hrm-coder
         - Added tooling target combining lint and test
         - Document train and eval target usage examples
         ~ Add coverage target aggregating ctest and pytest results
-    [~] Define Hydra config schema and default configs under conf/
+    [X] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
         - Added helper to instantiate sandbox runners from configuration
         - Added network access toggle to runner config defaults
-        ~ Add paths configuration group for dataset, runs, and artifact directories
-        ~ Add unit test covering config loading and path resolution
+        - Added paths configuration group for dataset, runs, and artifact directories
+        - Added unit test covering config loading and path resolution
     [X] Configure pre-commit for C++ (clang-format, clang-tidy, cpplint, codespell) and Python aux tools
         - Added Makefile lint target to run pre-commit
     [X] Implement environment pinning and seed/tz/locale normalization module
