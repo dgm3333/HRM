@@ -43,8 +43,7 @@ class NSJailRunner:
         time_limit:
             CPU time limit in seconds.
         wall_time:
-            Wall clock limit in seconds (``nsjail`` uses the same flag for
-            both CPU and wall limits).
+            Wall clock limit in seconds.
         memory:
             Memory limit in kilobytes.
         processes:
@@ -63,17 +62,22 @@ class NSJailRunner:
         fsize:
             Optional limit for files created by the process in bytes.
         """
+        bytes_limit = memory * 1024
         nsjail_cmd = [
             self.nsjail_path,
             "-Mo",
-            f"--time_limit={time_limit}",
-            f"--rlimit_as={memory * 1024}",
+            f"--time_limit={wall_time}",
+            f"--rlimit_cpu={time_limit}",
+            f"--cgroup_mem_max={bytes_limit}",
+            f"--rlimit_as={bytes_limit}",
             f"--cgroup_pids_max={processes}",
         ]
         if network:
             nsjail_cmd.append("--disable_clone_newnet")
         if workdir is not None:
-            nsjail_cmd.extend(["--cwd", workdir, "--bindmount", f"{workdir}:{workdir}"])
+            nsjail_cmd.extend(
+                ["--cwd", workdir, "--bindmount", f"{workdir}:{workdir}"]
+            )
         if readonly_dirs is not None:
             for path in readonly_dirs:
                 nsjail_cmd.extend(["--bindmount_ro", f"{path}:{path}"])
@@ -149,4 +153,9 @@ class NSJailRunner:
         if tmpdir_ctx is not None:
             tmpdir_ctx.cleanup()
 
-        return subprocess.CompletedProcess(cmd, proc.returncode, stdout_data, stderr_data)
+        return subprocess.CompletedProcess(
+            cmd,
+            proc.returncode,
+            stdout_data,
+            stderr_data,
+        )

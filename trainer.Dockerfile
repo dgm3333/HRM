@@ -1,11 +1,30 @@
 # trainer.Dockerfile - image for HRM training environment
 FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
-ENV PYTHONUNBUFFERED=1 \
+# Pin locale, timezone, and CUDA determinism settings
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    TZ=UTC \
+    PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=0 \
     CUBLAS_WORKSPACE_CONFIG=:4096:8 \
-    CUDA_LAUNCH_BLOCKING=1
+    CUDA_LAUNCH_BLOCKING=1 \
+    CUDNN_DETERMINISTIC=1 \
+    CUDNN_BENCHMARK=0 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
 
+# Minimal build tools for Python package compilation
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+        cmake \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
     pip install --no-cache-dir pre-commit

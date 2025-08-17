@@ -43,6 +43,37 @@ int main() { std::cout << add(1, 2); }
     assert stdout.strip() == "3"
 
 
+def test_compile_with_include_dirs(tmp_path: Path) -> None:
+    """Compile sources that rely on external include directories."""
+    inc = tmp_path / "inc"
+    inc.mkdir()
+    (inc / "math.hpp").write_text("int add(int,int);\n")
+
+    helper = tmp_path / "math.cpp"
+    helper.write_text(
+        """
+#include "math.hpp"
+int add(int a,int b){return a+b;}
+"""
+    )
+
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include <iostream>
+#include "math.hpp"
+int main(){std::cout<<add(3,4);}
+"""
+    )
+
+    res = compile_cpp_sources([helper, main], include_dirs=[inc])
+    assert res.success and res.binary is not None
+
+    code, stdout, _ = run_binary(res.binary)
+    assert code == 0
+    assert stdout.strip() == "7"
+
+
 def test_shared_library_link(tmp_path: Path) -> None:
     """Build a shared library and link it into a main program."""
     lib_src = tmp_path / "double.cpp"

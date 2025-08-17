@@ -22,9 +22,10 @@ from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .error_taxonomy import classify_compile
 from .io_judge import run_io_tests
-from .isolate import IsolateRunner, SandboxError
+from .isolate import IsolateRunner
 from .sandbox_cache import SandboxCache
-from utils.diagnostics import Diagnostic, parse_compiler_diagnostics
+from .binary_adapter import BinarySandboxAdapter, SANITIZER_ENV
+from utils.diagnostics import Diagnostic, compiler_diagnostics, parse_compiler_diagnostics
 
 
 DEFAULT_FLAGS: List[str] = [
@@ -39,16 +40,6 @@ SANITIZER_FLAGS: List[str] = [
     "-fsanitize=address,undefined",
     "-fno-omit-frame-pointer",
 ]
-
-# Default sanitizer environment ensuring deterministic behaviour when
-# AddressSanitizer or UndefinedBehaviorSanitizer are enabled.  These
-# settings disable leak detection (which can introduce nondeterminism)
-# and force the sanitizers to terminate immediately on failure without
-# coloured output that would pollute logs in some sandboxes.
-SANITIZER_ENV: Mapping[str, str] = {
-    "ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1:color=never",
-    "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1:color=never",
-}
 
 
 @dataclass
@@ -70,6 +61,7 @@ def compile_cpp_sources(
     *,
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
+    include_dirs: Optional[Iterable[Path]] = None,
     sanitize: bool = True,
     static: bool = False,
     library_dirs: Optional[Iterable[Path]] = None,
@@ -101,6 +93,8 @@ def compile_cpp_sources(
         Whether to include address and undefined behaviour sanitizers.
     static:
         Request a static build by passing ``-static`` when True.
+    include_dirs:
+        Extra directories to search for headers during compilation (``-I``).
     library_dirs:
         Extra directories to search for libraries during linking (``-L``).
     libraries:
@@ -134,6 +128,9 @@ def compile_cpp_sources(
 
     cmd += [str(s) for s in sources] + ["-o", str(output_path)] + list(flags)
 
+    if include_dirs is not None:
+        for d in include_dirs:
+            cmd.extend(["-I", str(d)])
     if library_dirs is not None:
         for d in library_dirs:
             cmd.extend(["-L", str(d)])
@@ -168,6 +165,10 @@ def compile_shared_library(
     *,
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
+    include_dirs: Optional[Iterable[Path]] = None,
+    library_dirs: Optional[Iterable[Path]] = None,
+    libraries: Optional[Iterable[str]] = None,
+    rpath: Optional[Iterable[Path]] = None,
     sanitize: bool = True,
     use_ccache: bool = False,
 ) -> CompileResult:
@@ -175,8 +176,8 @@ def compile_shared_library(
 
     This helper produces a ``.so`` suitable for linking against binaries
     compiled with :func:`compile_cpp_sources`.  It mirrors that function's
-    support for optional sanitizers and ``ccache`` to encourage deterministic
-    yet repeatable builds.
+    support for optional sanitizers, include and library directories, rpath
+    entries, and ``ccache`` to encourage deterministic yet repeatable builds.
     """
 
     if flags is None:
@@ -201,6 +202,18 @@ def compile_shared_library(
 
     cmd += [str(s) for s in sources] + ["-o", str(output_path)] + list(flags)
 
+    if include_dirs is not None:
+        for d in include_dirs:
+            cmd.extend(["-I", str(d)])
+    if library_dirs is not None:
+        for d in library_dirs:
+            cmd.extend(["-L", str(d)])
+    if libraries is not None:
+        for lib in libraries:
+            cmd.extend(["-l", lib])
+    if rpath is not None:
+        for p in rpath:
+            cmd.append(f"-Wl,-rpath,{p}")
     proc = subprocess.run(
         cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
     )
@@ -225,6 +238,7 @@ def compile_static_library(
     *,
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
+    include_dirs: Optional[Iterable[Path]] = None,
     sanitize: bool = True,
     use_ccache: bool = False,
 ) -> CompileResult:
@@ -233,7 +247,8 @@ def compile_static_library(
     This helper builds each source into an object file and archives them
     together using ``ar``.  It mirrors :func:`compile_shared_library` so that
     Phase 10 experiments can easily link against lightweight library stubs
-    without relying on dynamic libraries.
+    without relying on dynamic libraries. ``include_dirs`` allows headers to be
+    referenced from external locations during compilation.
     """
 
     if flags is None:
@@ -264,6 +279,9 @@ def compile_static_library(
         if use_ccache and shutil.which("ccache") is not None:
             cmd = ["ccache", compiler]
         cmd += [str(src), "-c", "-o", str(obj_path)] + list(flags)
+        if include_dirs is not None:
+            for d in include_dirs:
+                cmd.extend(["-I", str(d)])
         proc = subprocess.run(
             cmd,
             capture_output=True,
@@ -317,6 +335,7 @@ def compile_cpp(
     *,
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
+    include_dirs: Optional[Iterable[Path]] = None,
     sanitize: bool = True,
 ) -> CompileResult:
     """Compile a single C++ ``source`` file.
@@ -331,6 +350,7 @@ def compile_cpp(
         output,
         compiler=compiler,
         flags=flags,
+        include_dirs=include_dirs,
         sanitize=sanitize,
     )
 
@@ -394,6 +414,20 @@ def run_binary(
     if cwd is None:
         cwd = binary.parent
 
+    if sandbox is not None:
+        adapter = BinarySandboxAdapter(sandbox)
+        return adapter.run(
+            binary,
+            input_data=input_data,
+            timeout=timeout,
+            memory_limit=memory_limit,
+            env=env,
+            sanitize_env=sanitize_env,
+            cwd=cwd,
+            stdout_limit=stdout_limit,
+            stderr_limit=stderr_limit,
+        )
+
     if sanitize_env:
         env_combined: Optional[Mapping[str, str]] = {
             **SANITIZER_ENV,
@@ -401,49 +435,6 @@ def run_binary(
         }
     else:
         env_combined = dict(env) if env is not None else None
-
-    if sandbox is not None:
-        memory_kb = (memory_limit or 256 * 1024 * 1024) // 1024
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                proc = sandbox.run(
-                    [str(binary)],
-                    time_limit=int(timeout),
-                    wall_time=int(timeout),
-                    memory=memory_kb,
-                    stdin=input_data,
-                    workdir=tmpdir,
-                    readonly_dirs=[str(cwd)],
-                    env=env_combined,
-                    stdout_limit=stdout_limit,
-                    stderr_limit=stderr_limit,
-                )
-            except TypeError:
-                try:
-                    proc = sandbox.run(
-                        [str(binary)],
-                        time_limit=int(timeout),
-                        wall_time=int(timeout),
-                        memory=memory_kb,
-                        stdin=input_data,
-                        env=env_combined,
-                        stdout_limit=stdout_limit,
-                        stderr_limit=stderr_limit,
-                    )
-                except TypeError:
-                    proc = sandbox.run(
-                        [str(binary)],
-                        time_limit=int(timeout),
-                        wall_time=int(timeout),
-                        memory=memory_kb,
-                        stdin=input_data,
-                        env=env_combined,
-                        stdout_limit=stdout_limit,
-                        stderr_limit=stderr_limit,
-                    )
-            except SandboxError as exc:
-                return -1, "", str(exc)
-            return proc.returncode, proc.stdout, proc.stderr
 
     def preexec() -> None:
         _set_limits(memory_limit)
@@ -524,6 +515,7 @@ def run_codeforces_tests(
     *,
     compiler: str = "g++",
     flags: Optional[Iterable[str]] = None,
+    include_dirs: Optional[Iterable[Path]] = None,
     sanitize: bool = True,
     timeout: float = 2.0,
     memory_limit: Optional[int] = None,
@@ -578,6 +570,8 @@ def run_codeforces_tests(
             parts.append(f.encode())
         parts.append(b"sanitize" if sanitize else b"no_sanitize")
         parts.append(b"static" if static else b"dynamic")
+        for d in sorted(str(p) for p in include_dirs or []):
+            parts.append(d.encode())
         for d in sorted(str(p) for p in library_dirs or []):
             parts.append(d.encode())
         for lib in sorted(libraries or []):
@@ -696,6 +690,7 @@ def run_codeforces_tests(
             sources,
             compiler=compiler,
             flags=compile_flags,
+            include_dirs=include_dirs,
             sanitize=sanitize,
             static=static,
             library_dirs=library_dirs,

@@ -1,8 +1,3 @@
-import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
 from runners.nsjail import NSJailRunner
 
 
@@ -17,6 +12,11 @@ def test_build_command_network_off_by_default():
     )
     assert cmd[0] == "nsjail"
     assert "--disable_clone_newnet" not in cmd
+    assert "--time_limit=2" in cmd
+    assert "--rlimit_cpu=1" in cmd
+    assert f"--cgroup_mem_max={1024 * 1024}" in cmd
+    assert f"--rlimit_as={1024 * 1024}" in cmd
+    assert "--cgroup_pids_max=1" in cmd
     assert "--" in cmd
     assert cmd[-2:] == ["/bin/echo", "hello"]
 
