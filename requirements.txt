@@ -10,6 +10,7 @@ omegaconf
 hydra-core
 huggingface_hub
 fastapi
+httpx
 uvicorn
 pytest
 tree_sitter
