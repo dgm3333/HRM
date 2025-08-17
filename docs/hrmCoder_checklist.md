@@ -26,9 +26,9 @@ Save new code files in: C:\repos\hrm-coder
         - Documented feature parity matrix for isolate, nsjail, and gVisor adapters
         - Added integration tests verifying resource limit enforcement across adapters
         ~ Investigate file size limit enforcement support in gVisor runner
-    [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
+    [X] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
         - Added dataset catalog utility with hash validation and unit tests
-        ~ Populate dataset licenses and SHA256 hashes in docs/dataset_catalog.json
+        - Populated dataset licenses and SHA256 hashes in docs/dataset_catalog.json
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
     [~] Draft sandbox Threat Model and initial security requirements for native binaries
     [X] Write ADRs for sandbox choice, experiment tracker, and GUI stack
