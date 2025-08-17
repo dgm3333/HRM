@@ -37,6 +37,13 @@ def test_build_command_with_env():
     assert "BAZ=QUX" in cmd
 
 
+def test_build_command_with_fsize():
+    runner = GVisorRunner(docker_path="docker", image="ubuntu:latest")
+    cmd = runner.build_command(["/bin/true"], fsize=1234)
+    assert "--ulimit" in cmd
+    assert "fsize=1234" in cmd
+
+
 def test_run_truncates_output(monkeypatch):
     runner = GVisorRunner(docker_path="docker", image="ubuntu:latest")
 
@@ -54,3 +61,23 @@ def test_run_truncates_output(monkeypatch):
     proc = runner.run(["/bin/echo", "hi"], stdout_limit=10, stderr_limit=5)
     assert proc.stdout == "A" * 10
     assert proc.stderr == "B" * 5
+
+
+def test_run_includes_fsize(monkeypatch):
+    runner = GVisorRunner(docker_path="docker", image="ubuntu:latest")
+    monkeypatch.setattr(shutil, "which", lambda p: "/usr/bin/docker")
+
+    import subprocess
+
+    captured = {}
+
+    def fake_run(cmd, *args, **kwargs):
+        captured["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    runner.run(["/bin/echo", "hi"], stdout_limit=10)
+    cmd = captured["cmd"]
+    assert "--ulimit" in cmd
+    assert "fsize=10" in cmd

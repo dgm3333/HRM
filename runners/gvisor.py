@@ -39,6 +39,7 @@ class GVisorRunner:
         workdir: Optional[str] = None,
         readonly_dirs: Optional[Iterable[str]] = None,
         env: Optional[Mapping[str, str]] = None,
+        fsize: Optional[int] = None,
     ) -> List[str]:
         """Build a ``docker run`` command that executes ``command`` under
         gVisor.
@@ -83,6 +84,8 @@ class GVisorRunner:
         if env is not None:
             for key, value in env.items():
                 docker_cmd.extend(["-e", f"{key}={value}"])
+        if fsize is not None:
+            docker_cmd.extend(["--ulimit", f"fsize={fsize}"])
         docker_cmd.append(self.image)
         docker_cmd.extend(command)
         return docker_cmd
@@ -107,6 +110,7 @@ class GVisorRunner:
             raise SandboxError(
                 f"docker executable not found: {self.docker_path}"
             )
+        max_limit = max(stdout_limit or 0, stderr_limit or 0)
         cmd = self.build_command(
             command,
             time_limit=time_limit,
@@ -116,6 +120,7 @@ class GVisorRunner:
             workdir=workdir,
             readonly_dirs=readonly_dirs,
             env=env,
+            fsize=max_limit if max_limit else None,
         )
         proc = subprocess.run(
             cmd,

@@ -15,7 +15,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
     [?] Setup project operation within isolate/gVisor runner images
         - Added run_in_sandbox utility script for executing arbitrary commands in the selected sandbox backend
-    [~] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
+    [X] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
         - Added sandbox detection utility for isolate, nsjail, and gVisor runsc runtime
         - Added default sandbox selection helper to prefer isolate and fall back to nsjail or runsc
         - Integrated sandbox auto-selection into runner configuration
@@ -25,7 +25,7 @@ Save new code files in: C:\repos\hrm-coder
         - Added environment variable and output limit support to gVisor runner
         - Documented feature parity matrix for isolate, nsjail, and gVisor adapters
         - Added integration tests verifying resource limit enforcement across adapters
-        ~ Investigate file size limit enforcement support in gVisor runner
+        - Implemented file size limit enforcement support in gVisor runner
     [X] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
         - Added dataset catalog utility with hash validation and unit tests
         - Populated dataset licenses and SHA256 hashes in docs/dataset_catalog.json
