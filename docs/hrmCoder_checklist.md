@@ -31,7 +31,10 @@ Save new code files in: C:\repos\hrm-coder
         ~ Populate dataset licenses and SHA256 hashes in docs/dataset_catalog.json
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
     [~] Draft sandbox Threat Model and initial security requirements for native binaries
-    [~] Write ADRs for sandbox choice, experiment tracker, and GUI stack
+    [X] Write ADRs for sandbox choice, experiment tracker, and GUI stack
+        - Added ADR 0001 detailing isolate as default sandbox with nsjail/runsc fallbacks
+        - Added ADR 0002 selecting MLflow for experiment tracking
+        - Added ADR 0003 choosing FastAPI with htmx/Tailwind for the GUI stack
     [~] Create initial risk register and mitigation plan
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
