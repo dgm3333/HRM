@@ -23,6 +23,7 @@ Save new code files in: C:\repos\hrm-coder
         - Added audit CLI with optional JSON output for programmatic environment checks
     [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
         - Added dataset catalog utility with hash validation and unit tests
+        ~ Populate dataset licenses and SHA256 hashes in docs/dataset_catalog.json
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
     [~] Draft sandbox Threat Model and initial security requirements for native binaries
     [~] Write ADRs for sandbox choice, experiment tracker, and GUI stack
