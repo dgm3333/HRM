@@ -16,7 +16,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Setup project operation within isolate/gVisor runner images
         - Added run_in_sandbox utility script for executing commands in the selected sandbox backend
         - Documented auto-detect helper and sandbox smoke test
-    [~] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
+    [X] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
         - Added sandbox detection utility for isolate, nsjail, and gVisor runsc runtime
         - Added default sandbox selection helper to prefer isolate and fall back to nsjail or runsc
         - Integrated sandbox auto-selection into runner configuration
@@ -26,7 +26,7 @@ Save new code files in: C:\repos\hrm-coder
         - Added environment variable and output limit support to gVisor runner
         - Documented feature parity matrix for isolate, nsjail, and gVisor adapters
         - Added integration tests verifying resource limit enforcement across adapters
-        ~ Investigate file size limit enforcement support in gVisor runner
+        - Implemented file size limit enforcement support in gVisor runner
     [X] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
         - Added dataset catalog utility with hash validation and unit tests
         - Populated dataset licenses and SHA256 hashes in docs/dataset_catalog.json
@@ -44,7 +44,8 @@ Save new code files in: C:\repos\hrm-coder
     [X] Generate project layout scaffold script for hrm-coder directory tree
     [X] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
         - Installed coverage utilities and compiled gtest; locale/timezone pinned for determinism
-    [?] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
+    [X] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
+        - Pinned PyTorch 2.2.0 with CUDA 12.1 runtime and enforced reproducibility flags
     [~] Create Makefile targets for data, train, eval, report, and tooling (CMake + ctest integration)
         - Added build_trainer target for trainer Docker image
         - Added lint target invoking pre-commit hooks
@@ -145,17 +146,17 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
         - Default flags: `-std=c++17 -O2 -pipe -Wall -Wextra -fdiagnostics-color=never`
         - Structured parsing of compiler warnings and errors
-    [~] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
+    [?] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
         - Injected default ASAN_OPTIONS and UBSAN_OPTIONS in run_binary for deterministic sanitized runs
         - Added BinarySandboxAdapter to route compiled binaries through sandbox with sanitizer environment
         - Added integration tests exercising BinarySandboxAdapter with nsjail and gVisor backends
-        ~ Document adapter usage and sanitizer configuration in developer docs
+        - Documented adapter usage and sanitizer configuration in developer docs
     [?] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
-    [?] Configure static versus dynamic linking inside jail with rpath handling and ccache
+    [X] Configure static versus dynamic linking inside jail with rpath handling and ccache
         - Added compile wrapper support for include paths, library directories, rpath, optional static builds, and ccache
         - Added helpers for building shared and static libraries to support library stubs in multi-file projects
         - Extended shared library builder with include, library, and rpath options for linking against dependent libraries
-        - Implement automatic $ORIGIN-based rpath injection for bundled libraries
+        - Implement automatic $ORIGIN-based rpath injection for bundled libraries and binaries
         - Add sandboxed integration tests for dynamic and static linking paths
     [X] Create C++ security test suite for resource abuse and restricted syscalls
     [X] Integrate C++ metrics and outcomes into common evaluator and reports

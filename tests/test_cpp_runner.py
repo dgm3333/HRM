@@ -37,12 +37,14 @@ class DummySandbox:
         env,
         stdout_limit=None,
         stderr_limit=None,
+        **kwargs,
     ):
         host_dir = Path(readonly_dirs[0])
         internal_dir = Path(workdir) / host_dir.relative_to("/")
         internal_dir.mkdir(parents=True, exist_ok=True)
         for f in host_dir.iterdir():
-            shutil.copy(f, internal_dir / f.name)
+            if f.is_file():
+                shutil.copy(f, internal_dir / f.name)
         backup = host_dir.with_name(host_dir.name + "_orig")
         host_dir.rename(backup)
         try:
@@ -69,7 +71,7 @@ class DummySandbox:
                 internal_cmd, proc.returncode, stdout, stderr
             )
         finally:
-            shutil.rmtree(backup, ignore_errors=True)
+            backup.rename(host_dir)
 
 
 def test_compile_multi_file(tmp_path: Path) -> None:
@@ -201,6 +203,39 @@ int main(){std::cout<<times_two(5);}
     code, stdout, stderr = run_binary(
         main_res.binary, env={"LD_LIBRARY_PATH": str(tmp_path)}
     )
+    assert code == 0
+    assert stdout.strip() == "10"
+
+
+def test_shared_library_default_rpath_sandbox(tmp_path: Path) -> None:
+    """Shared library should resolve via default $ORIGIN rpath in sandbox."""
+    lib_src = tmp_path / "double.cpp"
+    lib_src.write_text(
+        'extern "C" int times_two(int x){return 2*x;}\n'
+    )
+    lib_res = compile_shared_library(
+        [lib_src], output=tmp_path / "libdouble.so"
+    )
+    assert lib_res.success
+
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include <iostream>
+extern "C" int times_two(int);
+int main(){std::cout<<times_two(5);}
+""",
+    )
+    main_res = compile_cpp_sources(
+        [main],
+        output=tmp_path / "main",
+        library_dirs=[tmp_path],
+        libraries=["double"],
+    )
+    assert main_res.success and main_res.binary is not None
+
+    sandbox = DummySandbox()
+    code, stdout, stderr = run_binary(main_res.binary, sandbox=sandbox)
     assert code == 0
     assert stdout.strip() == "10"
 
