@@ -34,6 +34,18 @@ class EnvironmentConfig:
 
 
 @dataclass
+class PathsConfig:
+    """Filesystem locations used by the application.
+
+    Paths are resolved relative to the project root when loaded.
+    """
+
+    data_root: Path = Path("data")
+    runs_root: Path = Path("runs")
+    artifacts_root: Path = Path("artifacts")
+
+
+@dataclass
 class RunnerConfig:
     """Configuration for the sandbox runner.
 
@@ -95,6 +107,7 @@ class AppConfig:
     acceptance: AcceptanceConfig = field(default_factory=AcceptanceConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     environment: EnvironmentConfig = field(default_factory=EnvironmentConfig)
+    paths: PathsConfig = field(default_factory=PathsConfig)
 
 
 def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
@@ -121,6 +134,10 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
         comp, _ = toolchain_detector.select_compiler()
         runner_cfg.compiler = comp or "g++"
 
+    paths_cfg = PathsConfig(
+        **{k: Path(v) for k, v in cfg_dict["paths"].items()}
+    )
+
     return AppConfig(
         model=ModelConfig(**cfg_dict["model"]),
         dataset=DatasetConfig(**cfg_dict["dataset"]),
@@ -128,6 +145,7 @@ def load_config(overrides: Sequence[str] | None = None) -> AppConfig:
         acceptance=AcceptanceConfig(**cfg_dict["acceptance"]),
         training=TrainingConfig(**cfg_dict["training"]),
         environment=EnvironmentConfig(**cfg_dict["environment"]),
+        paths=paths_cfg,
     )
 
 
@@ -139,5 +157,6 @@ __all__ = [
     "AcceptanceConfig",
     "TrainingConfig",
     "EnvironmentConfig",
+    "PathsConfig",
     "load_config",
 ]
