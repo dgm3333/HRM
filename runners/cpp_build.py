@@ -11,18 +11,23 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 from subprocess import CompletedProcess
+from typing import Dict
 
 
 def configure(
     source_dir: Path,
     build_dir: Path,
+    *,
     preset: str = "sanitized",
+    compiler: str = "g++",
 ) -> CompletedProcess:
     """Run a basic CMake configure step into ``build_dir``.
 
     Currently only a ``sanitized`` preset is supported which enables
     AddressSanitizer and UndefinedBehaviorSanitizer for deterministic
-    debugging. The ``preset`` argument is reserved for future expansion.
+    debugging. The ``preset`` argument is reserved for future expansion.  A
+    ``compiler`` can be provided to choose between toolchains such as ``g++``
+    or ``clang++``.
     """
     build_dir.mkdir(parents=True, exist_ok=True)
     if preset != "sanitized":
@@ -35,6 +40,7 @@ def configure(
         str(build_dir),
         "-G",
         "Ninja",
+        f"-DCMAKE_CXX_COMPILER={compiler}",
         "-DCMAKE_BUILD_TYPE=Debug",
         "-DCMAKE_CXX_FLAGS=-O1 -g -fsanitize=address,undefined "
         "-fno-omit-frame-pointer",
@@ -55,4 +61,82 @@ def run_tests(build_dir: Path) -> CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
-__all__ = ["configure", "build", "run_tests"]
+def build_and_run_gtests(
+    source_dir: Path,
+    build_dir: Path,
+    *,
+    test_binary: str,
+    compiler: str = "g++",
+    preset: str = "sanitized",
+) -> Dict[str, object]:
+    """Configure, build, and execute a GoogleTest binary with CMake.
+
+    Parameters
+    ----------
+    source_dir:
+        Directory containing a ``CMakeLists.txt`` and test sources.
+    build_dir:
+        Directory where the build files and resulting binary will be placed.
+    test_binary:
+        Name of the produced test executable inside ``build_dir``.
+    compiler:
+        Which C++ compiler to use (e.g. ``g++`` or ``clang++``).
+    preset:
+        Currently only ``"sanitized"`` is supported which enables ASan/UBSan
+        for deterministic debugging.
+
+    Returns
+    -------
+    Dict[str, object]
+        Dictionary combining configure/build logs with parsed GoogleTest
+        results.  On configure or build failure ``tests`` will be ``0`` and
+        ``xml`` will be empty.
+    """
+
+    cfg = configure(source_dir, build_dir, preset=preset, compiler=compiler)
+    data: Dict[str, object] = {
+        "configure_stdout": cfg.stdout,
+        "configure_stderr": cfg.stderr,
+        "configure_returncode": cfg.returncode,
+    }
+    if cfg.returncode != 0:
+        data.update(
+            {
+                "tests": 0,
+                "failures": 0,
+                "errors": 0,
+                "cases": [],
+                "xml": "",
+            }
+        )
+        return data
+
+    comp = build(build_dir)
+    data.update(
+        {
+            "build_stdout": comp.stdout,
+            "build_stderr": comp.stderr,
+            "build_returncode": comp.returncode,
+        }
+    )
+    if comp.returncode != 0:
+        data.update(
+            {
+                "tests": 0,
+                "failures": 0,
+                "errors": 0,
+                "cases": [],
+                "xml": "",
+            }
+        )
+        return data
+
+    from .gtest_runner import run_gtests  # local import to avoid cycle
+
+    binary = build_dir / test_binary
+    run_res = run_gtests(binary)
+    data.update(run_res)
+    return data
+
+
+__all__ = ["configure", "build", "run_tests", "build_and_run_gtests"]
