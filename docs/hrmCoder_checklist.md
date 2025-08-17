@@ -19,6 +19,7 @@ Save new code files in: C:\repos\hrm-coder
         - Added default sandbox selection helper to prefer isolate and fall back to nsjail or runsc
         - Integrated sandbox auto-selection into runner configuration
         - Added toolchain detection utility for g++, clang++, lcov, llvm-cov, and gcov
+        - Added sandbox smoke test script to verify basic command execution in available backends
     [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
         - Added dataset catalog utility with hash validation and unit tests
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
