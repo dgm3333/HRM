@@ -1,8 +1,9 @@
 import subprocess
 
+from runners import IsolateRunner, NSJailRunner, sandbox_detector
+from runners.sandbox_cache import SandboxCache
 from hrm_coder.config import RunnerConfig
 from hrm_coder.runner import create_sandbox_runner, run_in_sandbox
-from runners import IsolateRunner, NSJailRunner, sandbox_detector
 
 
 def test_create_sandbox_runner_explicit():
@@ -53,3 +54,28 @@ def test_run_in_sandbox_override_network(monkeypatch):
     monkeypatch.setattr(IsolateRunner, "run", fake_run)
     run_in_sandbox(["/bin/true"], cfg, network=True)
     assert called["network"] is True
+
+
+def test_run_in_sandbox_cache(monkeypatch, tmp_path):
+    cfg = RunnerConfig(sandbox="isolate")
+    cache = SandboxCache(tmp_path / "cache")
+
+    class SpyRunner(IsolateRunner):
+        def __init__(self) -> None:
+            super().__init__()
+            self.calls = 0
+
+        def run(self, command, **kwargs):
+            self.calls += 1
+            return subprocess.CompletedProcess(command, 0, "OUT", "ERR")
+
+    spy = SpyRunner()
+    import hrm_coder.runner as runner_mod
+
+    monkeypatch.setattr(runner_mod, "create_sandbox_runner", lambda _cfg: spy)
+    cmd = ["/bin/echo", "hi"]
+    first = run_in_sandbox(cmd, cfg, cache=cache)
+    assert spy.calls == 1
+    second = run_in_sandbox(cmd, cfg, cache=cache)
+    assert spy.calls == 1
+    assert first.stdout == second.stdout == "OUT"
