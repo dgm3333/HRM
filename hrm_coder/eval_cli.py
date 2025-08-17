@@ -54,6 +54,11 @@ def _parse_args() -> argparse.Namespace:
         help="JSON files mapping task id → status string for incident rates",
     )
     parser.add_argument(
+        "--cpp-metrics",
+        default=None,
+        help="JSON file mapping task id to C++ metrics",
+    )
+    parser.add_argument(
         "--bundle",
         default=None,
         help="Path to write a bundled tar.gz of reports and raw JSON",
@@ -72,7 +77,9 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _load_incident_runs(paths: Sequence[str] | None) -> Sequence[dict[str, str]]:
+def _load_incident_runs(
+    paths: Sequence[str] | None,
+) -> Sequence[dict[str, str]]:
     return [json.loads(Path(p).read_text()) for p in paths] if paths else []
 
 
@@ -91,6 +98,7 @@ def main() -> None:  # pragma: no cover - exercised via tests
         run_paths=args.runs,
         baseline_path=args.baseline,
         incident_paths=args.incidents,
+        cpp_metrics_path=args.cpp_metrics,
         bundle_path=args.bundle,
         upload_dir=args.upload,
     )
@@ -99,7 +107,7 @@ def main() -> None:  # pragma: no cover - exercised via tests
     incident_runs = _load_incident_runs(args.incidents)
     incident_summary = incident_rates(incident_runs) if incident_runs else {}
     sanitizer_failures = sum(
-        status == "sanitizer"
+        status == "sanitizer_error"
         for run in incident_runs
         for status in run.values()
     )
@@ -129,4 +137,3 @@ def main() -> None:  # pragma: no cover - exercised via tests
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
     main()
-

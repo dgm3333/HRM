@@ -100,7 +100,12 @@ def flaky_tasks(runs: Sequence[Dict[str, bool]]) -> List[str]:
 
 def incident_rates(
     runs: Sequence[Dict[str, str]],
-    incident_types: Sequence[str] = ("timeout", "sanitizer"),
+    incident_types: Sequence[str] = (
+        "timeout",
+        "sanitizer_error",
+        "compile_error",
+        "runtime_error",
+    ),
 ) -> Dict[str, float]:
     """Compute rates of specified incident types across runs.
 
@@ -110,7 +115,7 @@ def incident_rates(
         Sequence of mappings from task identifier to a status string.
     incident_types:
         Iterable of status values to measure. Defaults to ``("timeout",
-        "sanitizer")``.
+        "sanitizer_error", "compile_error", "runtime_error")``.
     """
 
     counts = {inc: 0 for inc in incident_types}
@@ -127,10 +132,56 @@ def incident_rates(
     }
 
 
+def aggregate_cpp_metrics(
+    data: Dict[str, Dict[str, object]]
+) -> Dict[str, float]:
+    """Aggregate C++-specific metrics from per-task results.
+
+    Parameters
+    ----------
+    data:
+        Mapping from task identifier to dictionaries containing keys such as
+        ``compile_status``, ``compile_warnings`` and ``coverage``.
+
+    Returns
+    -------
+    Dict[str, float]
+        Summary metrics including ``compile_success_rate``,
+        ``avg_compile_warnings`` and ``avg_coverage``.
+    """
+
+    total = len(data)
+    if total == 0:
+        return {
+            "compile_success_rate": 0.0,
+            "avg_compile_warnings": 0.0,
+            "avg_coverage": 0.0,
+        }
+
+    success = sum(
+        1 for m in data.values() if m.get("compile_status") == "success"
+    )
+    warnings = sum(
+        int(m.get("compile_warnings", 0)) for m in data.values()
+    )
+    coverages = [
+        float(m.get("coverage"))
+        for m in data.values()
+        if m.get("coverage") is not None
+    ]
+    avg_cov = sum(coverages) / len(coverages) if coverages else 0.0
+    return {
+        "compile_success_rate": success / total,
+        "avg_compile_warnings": warnings / total,
+        "avg_coverage": avg_cov,
+    }
+
+
 def markdown_report(
     metrics: Dict[int, float],
     flaky: Sequence[str],
     incidents: Dict[str, float] | None = None,
+    extra_metrics: Dict[str, float] | None = None,
 ) -> str:
     """Generate a Markdown report for the evaluation metrics."""
 
@@ -138,6 +189,12 @@ def markdown_report(
     for k, value in sorted(metrics.items()):
         lines.append(f"| {k} | {value:.3f} |")
     lines.append("")
+    if extra_metrics:
+        lines.append("## Additional Metrics")
+        lines.extend(
+            f"- {name}: {val:.3f}" for name, val in extra_metrics.items()
+        )
+        lines.append("")
     if incidents:
         lines.append("## Incident Rates")
         lines.extend(
@@ -156,6 +213,7 @@ def html_report(
     metrics: Dict[int, float],
     flaky: Sequence[str],
     incidents: Dict[str, float] | None = None,
+    extra_metrics: Dict[str, float] | None = None,
 ) -> str:
     """Generate a minimal HTML report for the evaluation metrics."""
 
@@ -164,9 +222,9 @@ def html_report(
         for k, value in sorted(metrics.items())
     )
     if flaky:
-        flaky_html = "<ul>" + "".join(
-            f"<li>{task}</li>" for task in flaky
-        ) + "</ul>"
+        flaky_html = (
+            "<ul>" + "".join(f"<li>{task}</li>" for task in flaky) + "</ul>"
+        )
     else:
         flaky_html = "<p>No flaky tasks detected.</p>"
     if incidents:
@@ -180,10 +238,22 @@ def html_report(
         )
     else:
         incidents_html = "<p>No incidents recorded.</p>"
+    if extra_metrics:
+        extra_html = (
+            "<ul>"
+            + "".join(
+                f"<li>{name}: {val:.3f}</li>"
+                for name, val in extra_metrics.items()
+            )
+            + "</ul>"
+        )
+    else:
+        extra_html = ""
     return (
         "<h1>Evaluation Report</h1>"
         "<table><tr><th>k</th><th>pass@k</th></tr>"
         f"{rows}</table>"
+        f"{extra_html}"
         f"{incidents_html}"
         f"{flaky_html}"
     )
@@ -281,6 +351,7 @@ def generate_reports(
     run_paths: Sequence[str] | None = None,
     baseline_path: str | None = None,
     incident_paths: Sequence[str] | None = None,
+    cpp_metrics_path: str | None = None,
     bundle_path: str | None = None,
     upload_dir: str | None = None,
 ) -> Dict[int, float]:
@@ -303,6 +374,11 @@ def generate_reports(
     incident_paths:
         Optional JSON files mapping task id → status string, used to
         compute incident rates such as timeouts and sanitizer failures.
+    cpp_metrics_path:
+        Optional JSON file mapping task id → C++ metrics containing
+        ``compile_status``, ``compile_warnings`` and optional ``coverage``
+        fields. When provided aggregated metrics are included in the
+        generated reports.
     bundle_path:
         Optional path for a bundled ``.tar.gz`` archive containing the
         generated reports and raw JSON. If ``None`` the bundle is skipped
@@ -336,6 +412,12 @@ def generate_reports(
         else None
     )
 
+    cpp_metrics = (
+        aggregate_cpp_metrics(json.loads(Path(cpp_metrics_path).read_text()))
+        if cpp_metrics_path
+        else None
+    )
+
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -346,11 +428,14 @@ def generate_reports(
     )
 
     (out_dir / "report.md").write_text(
-        markdown_report(metrics, flaky, incidents)
+        markdown_report(metrics, flaky, incidents, cpp_metrics)
     )
     (out_dir / "report.html").write_text(
-        html_report(metrics, flaky, incidents)
+        html_report(metrics, flaky, incidents, cpp_metrics)
     )
+
+    if cpp_metrics is not None:
+        (out_dir / "cpp_metrics.json").write_text(json.dumps(cpp_metrics))
 
     bundle_file: str | None = None
 
@@ -372,6 +457,8 @@ def generate_reports(
             out_dir / "results.json",
             out_dir / "metrics.json",
         ]
+        if cpp_metrics is not None:
+            files.append(out_dir / "cpp_metrics.json")
         if baseline_path is not None:
             files.extend(
                 [out_dir / "baseline.md", out_dir / "baseline.html"]
@@ -419,6 +506,11 @@ def main() -> None:  # pragma: no cover - CLI entry point
         help="JSON files of run status strings for incident rate computation",
     )
     parser.add_argument(
+        "--cpp-metrics",
+        default=None,
+        help="JSON file mapping task id to C++ metrics",
+    )
+    parser.add_argument(
         "--bundle",
         default=None,
         help="Path to write a bundled tar.gz of reports and JSON",
@@ -436,6 +528,7 @@ def main() -> None:  # pragma: no cover - CLI entry point
         run_paths=args.runs,
         baseline_path=args.baseline,
         incident_paths=args.incidents,
+        cpp_metrics_path=args.cpp_metrics,
         bundle_path=args.bundle,
         upload_dir=args.upload,
     )

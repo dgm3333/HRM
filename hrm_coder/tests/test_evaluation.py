@@ -41,15 +41,18 @@ def test_determinism_and_flaky_detection():
 def test_report_generation():
     metrics = {1: 0.5}
     incidents = {"timeout": 0.1}
-    report_md = markdown_report(metrics, ['t2'], incidents)
+    extras = {"compile_success_rate": 0.5}
+    report_md = markdown_report(metrics, ['t2'], incidents, extras)
     assert '| 1 | 0.500 |' in report_md
     assert 'Flaky Tasks' in report_md
     assert 'timeout' in report_md
+    assert 'compile_success_rate' in report_md
 
-    report_html = html_report(metrics, [], incidents)
+    report_html = html_report(metrics, [], incidents, extras)
     assert '<td>1</td><td>0.500</td>' in report_html
     assert 'No flaky tasks' in report_html
     assert 'timeout' in report_html
+    assert 'compile_success_rate' in report_html
 
 
 def test_baseline_comparison(tmp_path):
@@ -72,11 +75,12 @@ def test_baseline_comparison(tmp_path):
 def test_incident_rates():
     runs = [
         {"a": "timeout", "b": "pass"},
-        {"a": "sanitizer", "b": "timeout"},
+        {"a": "sanitizer_error", "b": "compile_error"},
     ]
     rates = incident_rates(runs)
-    assert rates["timeout"] == pytest.approx(2 / 4)
-    assert rates["sanitizer"] == pytest.approx(1 / 4)
+    assert rates["timeout"] == pytest.approx(1 / 4)
+    assert rates["sanitizer_error"] == pytest.approx(1 / 4)
+    assert rates["compile_error"] == pytest.approx(1 / 4)
 
 
 def test_generate_reports(tmp_path):
@@ -91,8 +95,30 @@ def test_generate_reports(tmp_path):
 
     incident1_file = tmp_path / "inc1.json"
     incident2_file = tmp_path / "inc2.json"
-    incident1_file.write_text(json.dumps({"t1": "timeout", "t2": "pass"}))
-    incident2_file.write_text(json.dumps({"t1": "pass", "t2": "timeout"}))
+    incident1_file.write_text(
+        json.dumps({"t1": "timeout", "t2": "pass"})
+    )
+    incident2_file.write_text(
+        json.dumps({"t1": "pass", "t2": "sanitizer_error"})
+    )
+
+    cpp_metrics_file = tmp_path / "cpp_metrics.json"
+    cpp_metrics_file.write_text(
+        json.dumps(
+            {
+                "t1": {
+                    "compile_status": "success",
+                    "compile_warnings": 1,
+                    "coverage": 0.5,
+                },
+                "t2": {
+                    "compile_status": "compile_error",
+                    "compile_warnings": 0,
+                    "coverage": 0.0,
+                },
+            }
+        )
+    )
 
     baseline_file = tmp_path / "baseline.json"
     baseline_file.write_text(json.dumps({"pass@1": 0.0, "pass@2": 0.0}))
@@ -107,6 +133,7 @@ def test_generate_reports(tmp_path):
         run_paths=[str(run1_file), str(run2_file)],
         baseline_path=str(baseline_file),
         incident_paths=[str(incident1_file), str(incident2_file)],
+        cpp_metrics_path=str(cpp_metrics_file),
         bundle_path=str(bundle_path),
         upload_dir=str(upload_dir),
     )
@@ -115,7 +142,9 @@ def test_generate_reports(tmp_path):
     report_md = (tmp_path / "report.md").read_text()
     assert "Flaky Tasks" in report_md and "t2" in report_md
     assert "Incident Rates" in report_md
+    assert "compile_success_rate" in report_md
     assert (tmp_path / "report.html").exists()
+    assert (tmp_path / "cpp_metrics.json").exists()
     assert (tmp_path / "baseline.md").exists()
     assert (tmp_path / "baseline.html").exists()
     assert bundle_path.exists()
