@@ -14,7 +14,7 @@ The table below compares capabilities across the supported sandbox adapters.
 | Environment variables    | ✅       | ✅     | ✅ |
 | Stdout/stderr capture    | ✅       | ✅     | ✅ |
 | Output size trimming     | ✅       | ✅     | ✅ |
-| File size limit          | ✅       | ✅     | ❌ *pending* |
+| File size limit          | ✅       | ✅     | ✅ |
 
 *`gVisor` support mirrors Docker's `runsc` runtime. CPU and wall time limits are
-not currently exposed and file size limits require further investigation.*
+not currently exposed.*
