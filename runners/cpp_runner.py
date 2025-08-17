@@ -105,6 +105,12 @@ def compile_cpp_sources(
     use_ccache:
         Prepend ``ccache`` to the compile command when available to speed up
         iterative builds.
+
+    Notes
+    -----
+    When ``static`` is ``False`` and no ``rpath`` is provided, ``$ORIGIN`` is
+    automatically injected so that dynamically linked binaries can locate
+    bundled libraries after being relocated inside a sandbox.
     """
 
     if flags is None:
@@ -123,6 +129,10 @@ def compile_cpp_sources(
     else:
         output_path = Path(output)
 
+    rpath_list = list(rpath) if rpath is not None else None
+    if not static and rpath_list is None:
+        rpath_list = [Path("$ORIGIN")]
+
     cmd: List[str] = [compiler]
     if use_ccache and shutil.which("ccache") is not None:
         cmd = ["ccache", compiler]
@@ -138,8 +148,8 @@ def compile_cpp_sources(
     if libraries is not None:
         for lib in libraries:
             cmd.extend(["-l", lib])
-    if rpath is not None:
-        for p in rpath:
+    if rpath_list is not None:
+        for p in rpath_list:
             cmd.append(f"-Wl,-rpath,{p}")
 
     proc = subprocess.run(
@@ -180,6 +190,8 @@ def compile_shared_library(
     compiled with :func:`compile_cpp_sources`.  It mirrors that function's
     support for optional sanitizers, include and library directories, rpath
     entries, and ``ccache`` to encourage deterministic yet repeatable builds.
+    When ``rpath`` is omitted, ``$ORIGIN`` is injected so that the shared
+    object can resolve bundled dependencies after being moved into a sandbox.
     """
 
     if flags is None:
@@ -198,6 +210,8 @@ def compile_shared_library(
     else:
         output_path = Path(output)
 
+    rpath_list = list(rpath) if rpath is not None else [Path("$ORIGIN")]
+
     cmd: List[str] = [compiler]
     if use_ccache and shutil.which("ccache") is not None:
         cmd = ["ccache", compiler]
@@ -213,8 +227,8 @@ def compile_shared_library(
     if libraries is not None:
         for lib in libraries:
             cmd.extend(["-l", lib])
-    if rpath is not None:
-        for p in rpath:
+    if rpath_list is not None:
+        for p in rpath_list:
             cmd.append(f"-Wl,-rpath,{p}")
     proc = subprocess.run(
         cmd, capture_output=True, text=True, encoding="utf-8", errors="replace"
