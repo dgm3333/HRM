@@ -64,3 +64,42 @@ def write_dvc_yaml(
     path = Path(yaml_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+if __name__ == "__main__":  # pragma: no cover - convenience CLI
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Generate a dvc.yaml stage for dataset builds",
+    )
+    parser.add_argument(
+        "catalog", help="Path to dataset_catalog.json describing datasets"
+    )
+    parser.add_argument(
+        "output_dir", help="Directory where processed datasets will be written"
+    )
+    parser.add_argument(
+        "--versions",
+        required=True,
+        help="Path to versions.yml recording dataset hashes",
+    )
+    parser.add_argument(
+        "--yaml",
+        default="dvc.yaml",
+        help="Path to write generated dvc.yaml file",
+    )
+    parser.add_argument(
+        "--stage-name",
+        default="build-datasets",
+        help="Name of the generated DVC stage",
+    )
+
+    args = parser.parse_args()
+
+    write_dvc_yaml(
+        args.catalog,
+        args.output_dir,
+        args.versions,
+        yaml_path=args.yaml,
+        stage_name=args.stage_name,
+    )
