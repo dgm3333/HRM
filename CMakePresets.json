@@ -37,6 +37,17 @@
         "CMAKE_CXX_FLAGS": "-Wall -Wextra -Werror",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Coverage",
+      "generator": "Ninja",
+      "binaryDir": "build/coverage",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "--coverage -O0",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
     }
   ]
 }
