@@ -14,6 +14,7 @@ Save new code files in: C:\repos\hrm-coder
 ** [~] Phase 0: Discovery & Reuse Audit
     [X] Inventory HRM repo APIs and identify injection points for C++ token/AST decoders
     [~] Setup project operation within isolate/gVisor runner images
+        - Added run_in_sandbox utility script for executing arbitrary commands in the selected sandbox backend
     [~] Evaluate isolate and gVisor adapters against nsjail for reuse and gaps
         - Added sandbox detection utility for isolate, nsjail, and gVisor runsc runtime
         - Added default sandbox selection helper to prefer isolate and fall back to nsjail or runsc
@@ -21,11 +22,19 @@ Save new code files in: C:\repos\hrm-coder
         - Added toolchain detection utility for g++, clang++, lcov, llvm-cov, and gcov
         - Added sandbox smoke test script to verify basic command execution in available backends
         - Added audit CLI with optional JSON output for programmatic environment checks
+        - Added environment variable and output limit support to gVisor runner
+        ~ Document feature parity matrix for isolate, nsjail, and gVisor adapters
+        ~ Add integration tests verifying resource limit enforcement across adapters
+        ~ Investigate file size limit enforcement support in gVisor runner
     [~] Compile dataset catalog (Codeforces-Intro, AtCoder ABC subset, Kattis micro-set, HumanEval-CPP port) with licenses and hashes (see docs/dataset_catalog.json)
         - Added dataset catalog utility with hash validation and unit tests
+        ~ Populate dataset licenses and SHA256 hashes in docs/dataset_catalog.json
     [X] Define acceptance metrics and thresholds for C++ (pass\@k, sanitizer-clean runs, timeout rate)
     [~] Draft sandbox Threat Model and initial security requirements for native binaries
-    [~] Write ADRs for sandbox choice, experiment tracker, and GUI stack
+    [X] Write ADRs for sandbox choice, experiment tracker, and GUI stack
+        - Added ADR 0001 detailing isolate as default sandbox with nsjail/runsc fallbacks
+        - Added ADR 0002 selecting MLflow for experiment tracking
+        - Added ADR 0003 choosing FastAPI with htmx/Tailwind for the GUI stack
     [?] Create initial risk register and mitigation plan
         - Added initial risk register and mitigation plan docs
 
