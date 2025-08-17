@@ -30,7 +30,8 @@ Save new code files in: C:\repos\hrm-coder
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
     [X] Generate project layout scaffold script for hrm-coder directory tree
-    [?] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
+    [X] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
+        - Installed coverage utilities and compiled gtest; locale/timezone pinned for determinism
     [~] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
     [~] Create Makefile targets for data, train, eval, report, and tooling (CMake + ctest integration)
         - Added build_trainer target for trainer Docker image
