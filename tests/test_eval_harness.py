@@ -8,9 +8,11 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))  # noqa: E402
 import pytest  # noqa: E402
 
 from utils.eval_harness import (  # noqa: E402
+    aggregate_cpp_metrics,
     bundle_and_upload,
     compare_to_baseline,
     generate_comparison_report,
+    generate_report,
 )
 
 
@@ -58,3 +60,26 @@ def test_generate_comparison_report(tmp_path):
     assert report_file.exists()
     assert json.loads(report_file.read_text()) == comparison
     assert comparison["pass@1"]["delta"] == pytest.approx(0.2)
+
+
+def test_aggregate_cpp_metrics():
+    data = {
+        "t1": {"compile_status": "success", "compile_warnings": 1, "coverage": 0.5},
+        "t2": {"compile_status": "failure", "compile_warnings": 0, "coverage": None},
+    }
+    metrics = aggregate_cpp_metrics(data)
+    assert metrics["compile_success_rate"] == pytest.approx(0.5)
+    assert metrics["avg_compile_warnings"] == pytest.approx(0.5)
+    assert metrics["avg_coverage"] == pytest.approx(0.5)
+
+
+def test_generate_report_with_extra_metrics(tmp_path):
+    report_file = tmp_path / "report.json"
+    generate_report(
+        {"pass@1": 0.5},
+        str(report_file),
+        extra_metrics={"compile_success_rate": 0.8},
+    )
+    data = json.loads(report_file.read_text())
+    assert data["pass@1"] == pytest.approx(0.5)
+    assert data["compile_success_rate"] == pytest.approx(0.8)

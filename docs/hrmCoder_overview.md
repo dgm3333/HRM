@@ -3,6 +3,8 @@
 
 * Public HRM work (paper + repo) shows Sudoku, mazes, and ARC; no code benchmarks or encoders yet. ([arXiv][1], [GitHub][2])
 
+For risk tracking and mitigation strategies, see [risk_register.md](risk_register.md) and [mitigation_plan.md](mitigation_plan.md).
+
 # 1) Objectives
 
 * **Robustness:** no flakiness; identical results on re-runs.
@@ -49,7 +51,7 @@ Augmentation (to reach \~1k samples without contamination):
 * **Runners:** language-specific:
 
   * Python: `pytest -q` inside sandbox; `pytest-timeout` plugin; cap stdout/stderr. ([Pytest Documentation][16], [LambdaTest][17])
-  * C++ (Phase-2): compile with `g++ -O2 -pipe -static -s` (if available) or dynamic with rpath inside the jail; run with the same limits (use isolate “box”). ([ucw.cz][18])
+  * C++ (Phase-2): compile with `g++ -O2 -pipe -static -s` (if available) or dynamic with `$ORIGIN` rpath inside the jail; optional `ccache` for speed; run with the same limits (use isolate “box”). ([ucw.cz][18])
 * **Caching:** hash(prompt+partial\_code+tests) → avoid re-running identical shards.
 * **Stability:** fix `PYTHONHASHSEED`, locale, time zone; no wall-clock in tests.
 
@@ -100,9 +102,11 @@ Signals (0–1 scaled), averaged with tuned weights:
   * `runner`: minimal runtime per language + nsjail/isolate binaries.
 * **Make/Hydra**
 
-  * `make data DATASET=mbpp-s`
-  * `make train CFG=token_baseline`
-  * `make eval CKPT=...`
+* `make data ARGS='--catalog docs/dataset_catalog.json'`
+* `make train ARGS='model.learning_rate=1e-3'`
+* `make eval ARGS='results.json reports/'`
+* `make report ARGS='results.json reports/summary'`
+* `make tooling`
 * **GitHub Actions**
 
   * Lint & unit tests for harness.

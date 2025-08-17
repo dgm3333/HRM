@@ -14,10 +14,26 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 DATASETS = [
-    {"name": "Codeforces-Intro", "path": Path("dataset/raw-data/codeforces_intro"), "license": "TBD"},
-    {"name": "AtCoder-ABC", "path": Path("dataset/raw-data/atcoder_abc"), "license": "TBD"},
-    {"name": "Kattis-micro", "path": Path("dataset/raw-data/kattis_micro"), "license": "TBD"},
-    {"name": "HumanEval-CPP", "path": Path("dataset/raw-data/humaneval_cpp.jsonl"), "license": "MIT"},
+    {
+        "name": "Codeforces-Intro",
+        "path": Path("dataset/raw-data/codeforces_intro"),
+        "license": "Codeforces Terms of Service",
+    },
+    {
+        "name": "AtCoder-ABC",
+        "path": Path("dataset/raw-data/atcoder_abc"),
+        "license": "AtCoder Terms of Use",
+    },
+    {
+        "name": "Kattis-micro",
+        "path": Path("dataset/raw-data/kattis_micro"),
+        "license": "Kattis Terms of Service",
+    },
+    {
+        "name": "HumanEval-CPP",
+        "path": Path("dataset/raw-data/humaneval_cpp.jsonl"),
+        "license": "MIT",
+    },
 ]
 
 

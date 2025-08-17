@@ -83,4 +83,62 @@ def run_io_harness(
         return run_codeforces_task(sources, task_dir, **kwargs)
 
 
-__all__ = ["IOPair", "build_io_harness", "run_io_harness"]
+def summarize_result(result: dict) -> dict:
+    """Summarize a Codeforces harness execution result.
+
+    Parameters
+    ----------
+    result:
+        Dictionary produced by :func:`run_io_harness` or
+        :func:`~runners.cpp_runner.run_codeforces_task`.
+
+    Returns
+    -------
+    dict
+        Summary containing an overall ``verdict`` (``"OK"``, ``"WA"``,
+        ``"TL"``, ``"ML"``, ``"RE"``, or ``"CE"``), whether all tests
+        ``passed``, and counts of passed versus total tests.
+    """
+
+    compile_status = result.get("compile_status", "")
+    tests = result.get("results", [])
+    passed_tests = sum(1 for t in tests if t.get("passed"))
+    total_tests = len(tests)
+
+    verdict = "OK"
+    if compile_status != "success":
+        verdict = "CE"
+    else:
+        for t in tests:
+            err = t.get("error_type")
+            if err == "timeout":
+                verdict = "TL"
+                break
+            if err in {"policy_violation", "sanitizer_error"}:
+                verdict = "RE"
+                break
+            if err == "runtime_error":
+                stderr = t.get("stderr", "").lower()
+                if "memory" in stderr or "bad_alloc" in stderr:
+                    verdict = "ML"
+                else:
+                    verdict = "RE"
+                break
+            if not t.get("passed"):
+                verdict = "WA"
+                break
+
+    return {
+        "verdict": verdict,
+        "passed": verdict == "OK",
+        "passed_tests": passed_tests,
+        "total_tests": total_tests,
+    }
+
+
+__all__ = [
+    "IOPair",
+    "build_io_harness",
+    "run_io_harness",
+    "summarize_result",
+]

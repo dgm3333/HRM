@@ -25,7 +25,7 @@ from .io_judge import run_io_tests
 from .isolate import IsolateRunner
 from .sandbox_cache import SandboxCache
 from .binary_adapter import BinarySandboxAdapter, SANITIZER_ENV
-from utils.diagnostics import Diagnostic, compiler_diagnostics, parse_compiler_diagnostics
+from utils.diagnostics import Diagnostic, parse_compiler_diagnostics
 
 
 DEFAULT_FLAGS: List[str] = [
@@ -49,6 +49,7 @@ class CompileResult:
     success: bool
     stdout: str
     stderr: str
+    cmd: List[str]
     binary: Optional[Path]
     warnings: int
     errors: int
@@ -149,13 +150,14 @@ def compile_cpp_sources(
     warnings = sum(d.level == "warning" for d in diags)
     errors = sum(d.level == "error" for d in diags)
     return CompileResult(
-        success,
-        proc.stdout,
-        proc.stderr,
-        output_path if success else None,
-        warnings,
-        errors,
-        diags,
+        success=success,
+        stdout=proc.stdout,
+        stderr=proc.stderr,
+        cmd=cmd,
+        binary=output_path if success else None,
+        warnings=warnings,
+        errors=errors,
+        diagnostics=diags,
     )
 
 
@@ -222,13 +224,14 @@ def compile_shared_library(
     warnings = sum(d.level == "warning" for d in diags)
     errors = sum(d.level == "error" for d in diags)
     return CompileResult(
-        success,
-        proc.stdout,
-        proc.stderr,
-        output_path if success else None,
-        warnings,
-        errors,
-        diags,
+        success=success,
+        stdout=proc.stdout,
+        stderr=proc.stderr,
+        cmd=cmd,
+        binary=output_path if success else None,
+        warnings=warnings,
+        errors=errors,
+        diagnostics=diags,
     )
 
 
@@ -297,13 +300,14 @@ def compile_static_library(
         total_errors += sum(d.level == "error" for d in diags)
         if proc.returncode != 0:
             return CompileResult(
-                False,
-                "".join(stdout_parts),
-                "".join(stderr_parts),
-                None,
-                total_warnings,
-                total_errors,
-                diagnostics,
+                success=False,
+                stdout="".join(stdout_parts),
+                stderr="".join(stderr_parts),
+                cmd=cmd,
+                binary=None,
+                warnings=total_warnings,
+                errors=total_errors,
+                diagnostics=diagnostics,
             )
         objs.append(obj_path)
 
@@ -319,13 +323,14 @@ def compile_static_library(
     stderr_parts.append(ar_proc.stderr)
     success = ar_proc.returncode == 0
     return CompileResult(
-        success,
-        "".join(stdout_parts),
-        "".join(stderr_parts),
-        output_path if success else None,
-        total_warnings,
-        total_errors,
-        diagnostics,
+        success=success,
+        stdout="".join(stdout_parts),
+        stderr="".join(stderr_parts),
+        cmd=ar_cmd,
+        binary=output_path if success else None,
+        warnings=total_warnings,
+        errors=total_errors,
+        diagnostics=diagnostics,
     )
 
 
@@ -605,14 +610,18 @@ def run_codeforces_tests(
     total_warnings = 0
     total_errors = 0
 
-    with tempfile.TemporaryDirectory() as lib_tmp:
-        lib_dirs: List[Path] = []
+    with tempfile.TemporaryDirectory() as build_tmp:
+        build_dir = Path(build_tmp)
+        lib_dirs: set[Path] = set()
         lib_names: List[str] = []
-        rpath_list: List[Path] = list(rpath) if rpath is not None else []
+        rpath_list: List[Path] = []
+        if rpath is not None:
+            rpath_list.extend(rpath)
 
         if shared_libs:
+            rpath_list.append(Path("$ORIGIN"))
             for name, srcs in shared_libs.items():
-                out = Path(lib_tmp) / f"lib{name}.so"
+                out = build_dir / f"lib{name}.so"
                 res = compile_shared_library(
                     srcs,
                     output=out,
@@ -620,6 +629,7 @@ def run_codeforces_tests(
                     flags=compile_flags,
                     sanitize=sanitize,
                     use_ccache=use_ccache,
+                    rpath=[Path("$ORIGIN")],
                 )
                 stdout_parts.append(res.stdout)
                 stderr_parts.append(res.stderr)
@@ -638,13 +648,12 @@ def run_codeforces_tests(
                     if cache is not None and key is not None:
                         cache.store(key, data)
                     return data
-                lib_dirs.append(out.parent)
+                lib_dirs.add(out.parent)
                 lib_names.append(name)
-                rpath_list.append(out.parent)
 
         if static_libs:
             for name, srcs in static_libs.items():
-                out = Path(lib_tmp) / f"lib{name}.a"
+                out = build_dir / f"lib{name}.a"
                 res = compile_static_library(
                     srcs,
                     output=out,
@@ -670,24 +679,29 @@ def run_codeforces_tests(
                     if cache is not None and key is not None:
                         cache.store(key, data)
                     return data
-                lib_dirs.append(out.parent)
+                lib_dirs.add(out.parent)
                 lib_names.append(name)
 
-        if library_dirs is not None:
-            library_dirs = list(library_dirs) + lib_dirs
-        else:
-            library_dirs = lib_dirs
-        if libraries is not None:
-            libraries = list(libraries) + lib_names
-        else:
-            libraries = lib_names
-        if rpath is not None:
-            rpath = list(rpath) + rpath_list
-        else:
-            rpath = rpath_list
+        if lib_dirs:
+            if library_dirs is not None:
+                library_dirs = list(library_dirs) + list(lib_dirs)
+            else:
+                library_dirs = list(lib_dirs)
+        if lib_names:
+            if libraries is not None:
+                libraries = list(libraries) + lib_names
+            else:
+                libraries = lib_names
+        if rpath_list:
+            if rpath is not None:
+                rpath = list(rpath) + rpath_list
+            else:
+                rpath = rpath_list
 
+        output_path = build_dir / "main"
         compile_res = compile_cpp_sources(
             sources,
+            output=output_path,
             compiler=compiler,
             flags=compile_flags,
             include_dirs=include_dirs,

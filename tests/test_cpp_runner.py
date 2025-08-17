@@ -3,6 +3,7 @@ import json
 import re
 import subprocess
 import sys
+import shutil
 
 import pytest  # noqa: F401
 
@@ -18,6 +19,57 @@ from runners.cpp_runner import (  # noqa: E402
     run_codeforces_task,
 )
 from runners.sandbox_cache import SandboxCache  # noqa: E402
+
+
+class DummySandbox:
+    """Minimal sandbox mimic that relocates binaries before execution."""
+
+    def run(
+        self,
+        command,
+        *,
+        time_limit,
+        wall_time,
+        memory,
+        stdin,
+        workdir,
+        readonly_dirs,
+        env,
+        stdout_limit=None,
+        stderr_limit=None,
+    ):
+        host_dir = Path(readonly_dirs[0])
+        internal_dir = Path(workdir) / host_dir.relative_to("/")
+        internal_dir.mkdir(parents=True, exist_ok=True)
+        for f in host_dir.iterdir():
+            shutil.copy(f, internal_dir / f.name)
+        backup = host_dir.with_name(host_dir.name + "_orig")
+        host_dir.rename(backup)
+        try:
+            internal_cmd = [str(internal_dir / Path(command[0]).name)]
+            proc = subprocess.run(
+                internal_cmd,
+                input=stdin,
+                capture_output=True,
+                text=True,
+                env=env,
+                cwd=workdir,
+            )
+            stdout = (
+                proc.stdout[: stdout_limit]
+                if stdout_limit is not None
+                else proc.stdout
+            )
+            stderr = (
+                proc.stderr[: stderr_limit]
+                if stderr_limit is not None
+                else proc.stderr
+            )
+            return subprocess.CompletedProcess(
+                internal_cmd, proc.returncode, stdout, stderr
+            )
+        finally:
+            shutil.rmtree(backup, ignore_errors=True)
 
 
 def test_compile_multi_file(tmp_path: Path) -> None:
@@ -430,6 +482,57 @@ int main(){int x; if(!(std::cin>>x)) return 0; std::cout<<times_two(x);}
 
     res = run_codeforces_tests(
         [main], tests_dir, shared_libs={"double": [lib_src]}
+    )
+    assert res["results"][0]["passed"]
+
+
+def test_run_codeforces_tests_shared_libs_sandbox(tmp_path: Path) -> None:
+    """Shared libs should resolve via $ORIGIN inside a sandbox."""
+    lib_src = tmp_path / "double.cpp"
+    lib_src.write_text('extern "C" int times_two(int x){return 2*x;}\n')
+
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include <iostream>
+extern "C" int times_two(int);
+int main(){int x; if(!(std::cin>>x)) return 0; std::cout<<times_two(x);}
+""",
+    )
+
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("3\n")
+    (tests_dir / "a.out").write_text("6\n")
+
+    sandbox = DummySandbox()
+    res = run_codeforces_tests(
+        [main], tests_dir, shared_libs={"double": [lib_src]}, sandbox=sandbox
+    )
+    assert res["results"][0]["passed"]
+
+
+def test_run_codeforces_tests_static_lib_sandbox(tmp_path: Path) -> None:
+    """Link a static library and run inside the sandbox."""
+    lib_src = tmp_path / "math.cpp"
+    lib_src.write_text("int add(int a,int b){return a+b;}\n")
+
+    main = tmp_path / "main.cpp"
+    main.write_text(
+        """
+#include <iostream>
+extern int add(int,int);
+int main(){int x; if(!(std::cin>>x)) return 0; std::cout<<add(x,1);}
+""",
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("4\n")
+    (tests_dir / "a.out").write_text("5\n")
+
+    sandbox = DummySandbox()
+    res = run_codeforces_tests(
+        [main], tests_dir, static_libs={"math": [lib_src]}, sandbox=sandbox
     )
     assert res["results"][0]["passed"]
 

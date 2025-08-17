@@ -1,6 +1,10 @@
 .PHONY: data build_runner build_trainer train eval report lint smoke cpp-build cpp-test test tooling
 
 # Phase 1 scaffold targets
+# Pass extra command line arguments to individual targets via the ARGS
+# variable, for example:
+#
+#     make train ARGS='--seed 123'
 
 DATA_OUT ?= data/processed
 
