@@ -1,6 +1,7 @@
 # HRM Coder GUI Quickstart
 
 This stub GUI exposes a FastAPI backend for managing training and evaluation runs.
+Before launching, optional `scripts/sandbox_smoke.py` can be used to ensure the isolate or gVisor sandbox is available for code execution.
 
 ## Running the server
 
