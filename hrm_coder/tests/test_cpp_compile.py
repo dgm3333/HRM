@@ -123,3 +123,59 @@ int main(){std::cout<<add(2,3);}
     assert res.success
     run = subprocess.run([str(exe)], capture_output=True, text=True)
     assert run.stdout.strip() == "5"
+
+
+def test_static_library_with_include(tmp_path: Path) -> None:
+    """Static library build should accept external include directories."""
+    inc = tmp_path / "inc"
+    inc.mkdir()
+    (inc / "util.h").write_text("int util();\n")
+    src = tmp_path / "util.cc"
+    src.write_text('#include "util.h"\nint util(){return 7;}\n')
+    lib_out = tmp_path / "libutil.a"
+    res = compile_static_library([src], lib_out, include_dirs=[inc])
+    assert res.success
+
+
+def test_shared_library_with_dependency(tmp_path: Path) -> None:
+    """Shared library builder should link against other libraries."""
+    inc = tmp_path / "inc"
+    inc.mkdir()
+    # Build a helper static library
+    (inc / "helper.h").write_text("int helper();\n")
+    helper_src = tmp_path / "helper.cc"
+    helper_src.write_text("int helper(){return 5;}\n")
+    helper_lib = tmp_path / "libhelper.a"
+    helper_res = compile_static_library([helper_src], helper_lib)
+    assert helper_res.success
+
+    # Build shared library depending on helper
+    wrap_src = tmp_path / "wrap.cc"
+    wrap_src.write_text('#include "helper.h"\nextern "C" int call_helper(){return helper();}\n')
+    wrap_lib = tmp_path / "libwrap.so"
+    wrap_res = compile_shared_library(
+        [wrap_src],
+        wrap_lib,
+        include_dirs=[inc],
+        lib_dirs=[tmp_path],
+        libs=["helper"],
+        rpaths=[tmp_path],
+    )
+    assert wrap_res.success
+
+    # Link main against wrap and run
+    main = tmp_path / "main.cc"
+    main.write_text(
+        'extern "C" int call_helper();\n#include <iostream>\nint main(){std::cout<<call_helper();}\n'
+    )
+    exe = tmp_path / "a.out"
+    res = compile_cpp(
+        [main],
+        exe,
+        lib_dirs=[tmp_path],
+        libs=["wrap"],
+        rpaths=[tmp_path],
+    )
+    assert res.success
+    run = subprocess.run([str(exe)], capture_output=True, text=True)
+    assert run.stdout.strip() == "5"
