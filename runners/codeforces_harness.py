@@ -119,7 +119,13 @@ def summarize_result(result: dict) -> dict:
                 break
             if err == "runtime_error":
                 stderr = t.get("stderr", "").lower()
-                if "memory" in stderr or "bad_alloc" in stderr:
+                rc = t.get("returncode")
+                if (
+                    "memory" in stderr
+                    or "bad_alloc" in stderr
+                    or "failed to map segment" in stderr
+                    or rc in {127, 134, 137, -9}
+                ):
                     verdict = "ML"
                 else:
                     verdict = "RE"

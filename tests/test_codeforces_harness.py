@@ -92,5 +92,13 @@ int main(){std::vector<int> v; v.resize(50'000'000);}
         memory_limit_kb=64_000,
         sanitize=False,
     )
+    tests = [IOPair("", "")]
+    result = run_io_harness([src], tests, memory_limit_kb=1024, sanitize=False)
+    assert not result["results"][0]["passed"]
     summary = summarize_result(result)
     assert summary["verdict"] == "ML"
+
+def test_compile_error(tmp_path: pathlib.Path) -> None:
+    src = _write_program(tmp_path / "bad.cpp", "int main() {\n")
+    tests = [IOPair("", "")]
+    result = run_io_harness([src], tests, sanitize=False)

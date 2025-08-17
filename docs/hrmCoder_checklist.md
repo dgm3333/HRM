@@ -150,8 +150,8 @@ Save new code files in: C:\repos\hrm-coder
         - Injected default ASAN_OPTIONS and UBSAN_OPTIONS in run_binary for deterministic sanitized runs
         - Added BinarySandboxAdapter to route compiled binaries through sandbox with sanitizer environment
         - Added integration tests exercising BinarySandboxAdapter with nsjail and gVisor backends
-        - Documented adapter usage and sanitizer configuration in developer docs
-    [?] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
+        ~ Document adapter usage and sanitizer configuration in developer docs
+    [X] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
     [X] Configure static versus dynamic linking inside jail with rpath handling and ccache
         - Added compile wrapper support for include paths, library directories, rpath, optional static builds, and ccache
         - Added helpers for building shared and static libraries to support library stubs in multi-file projects

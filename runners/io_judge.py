@@ -108,6 +108,7 @@ def run_io_tests(
                 "passed": passed,
                 "stdout": stdout,
                 "stderr": stderr,
+                "returncode": code,
                 "error_type": error_type,
             }
         )

@@ -82,23 +82,35 @@ class BinarySandboxAdapter:
                         time_limit=int(timeout),
                         wall_time=int(timeout),
                         memory=memory_kb,
-                        processes=1,
-                        network=False,
                         stdin=input_data,
+                        workdir=tmpdir,
+                        readonly_dirs=[str(cwd)],
                         env=env_combined,
                         stdout_limit=stdout_limit,
                         stderr_limit=stderr_limit,
                     )
                 except TypeError:
-                    proc = self.sandbox.run(
-                        [str(binary)],
-                        time_limit=int(timeout),
-                        memory=memory_kb,
-                        stdin=input_data,
-                        env=env_combined,
-                        stdout_limit=stdout_limit,
-                        stderr_limit=stderr_limit,
-                    )
+                    try:
+                        proc = self.sandbox.run(
+                            [str(binary)],
+                            time_limit=int(timeout),
+                            wall_time=int(timeout),
+                            memory=memory_kb,
+                            stdin=input_data,
+                            env=env_combined,
+                            stdout_limit=stdout_limit,
+                            stderr_limit=stderr_limit,
+                        )
+                    except TypeError:
+                        proc = self.sandbox.run(
+                            [str(binary)],
+                            time_limit=int(timeout),
+                            memory=memory_kb,
+                            stdin=input_data,
+                            env=env_combined,
+                            stdout_limit=stdout_limit,
+                            stderr_limit=stderr_limit,
+                        )
             except SandboxError as exc:
                 return -1, "", str(exc)
 

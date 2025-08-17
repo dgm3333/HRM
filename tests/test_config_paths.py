@@ -10,9 +10,10 @@ from hrm_coder import config as cfg  # noqa: E402
 def test_default_paths_resolve(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     conf = cfg.load_config()
-    assert conf.paths.data_root == Path("data")
-    assert conf.paths.runs_root == Path("runs")
-    assert conf.paths.artifacts_root == Path("artifacts")
+    project_root = Path(__file__).resolve().parents[1]
+    assert conf.paths.data_root == project_root / "data"
+    assert conf.paths.runs_root == project_root / "runs"
+    assert conf.paths.artifacts_root == project_root / "artifacts"
 
 
 def test_override_paths(monkeypatch, tmp_path):
@@ -24,6 +25,7 @@ def test_override_paths(monkeypatch, tmp_path):
             "paths.artifacts_root=a",
         ]
     )
+    project_root = Path(__file__).resolve().parents[1]
     assert conf.paths.data_root == Path("/tmp/data")
-    assert conf.paths.runs_root == Path("r")
-    assert conf.paths.artifacts_root == Path("a")
+    assert conf.paths.runs_root == project_root / "r"
+    assert conf.paths.artifacts_root == project_root / "a"
