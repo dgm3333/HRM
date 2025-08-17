@@ -35,6 +35,7 @@ Save new code files in: C:\repos\hrm-coder
         - Added build_trainer target for trainer Docker image
         - Added lint target invoking pre-commit hooks
         - Wired data target to dataset.build_from_catalog for deterministic builds
+        - Added report target generating Markdown/HTML summaries from evaluation results
     [~] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
         - Added helper to instantiate sandbox runners from configuration

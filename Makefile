@@ -17,10 +17,10 @@ train:
 	python -m hrm_coder.train $(ARGS)
 
 eval:
-	python -m hrm_coder.eval_cli $(ARGS)
+        python -m hrm_coder.eval_cli $(ARGS)
 
 report:
-        @echo "Report generation not implemented yet"
+       python scripts/report.py $(ARGS)
 
 lint:
         pre-commit run --all-files
