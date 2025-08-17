@@ -1,12 +1,18 @@
 import pathlib
 import sys
+
 import pytest
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
-from runners.cpp_runner import compile_cpp_sources
-from runners.io_judge import run_io_tests
-from runners.sandbox_cache import SandboxCache
+from runners.cpp_runner import compile_cpp_sources  # noqa: E402
+import runners.cpp_runner as cpp_runner  # noqa: E402
+import runners.io_judge as io_judge  # noqa: E402
+from runners.io_judge import (  # noqa: E402
+    run_io_tests,
+    compile_and_run_io_tests,
+)
+from runners.sandbox_cache import SandboxCache  # noqa: E402
 
 
 def test_run_io_tests_basic(tmp_path: pathlib.Path) -> None:
@@ -71,7 +77,8 @@ def test_run_io_tests_cache(
 def test_run_io_tests_stdout_limit(tmp_path: pathlib.Path) -> None:
     src = tmp_path / "main.cpp"
     src.write_text(
-        "#include <iostream>\nint main(){for(int i=0;i<100;i++) std::cout<<'A';}"
+        "#include <iostream>\n"
+        "int main(){for(int i=0;i<100;i++) std::cout<<'A';}"
     )
     res = compile_cpp_sources([src])
     assert res.success and res.binary is not None
@@ -84,3 +91,56 @@ def test_run_io_tests_stdout_limit(tmp_path: pathlib.Path) -> None:
     results = run_io_tests(res.binary, tests_dir, stdout_limit=10)
     out = results["results"][0]["stdout"]
     assert out == "A" * 10
+
+
+def test_compile_and_run_io_tests(tmp_path: pathlib.Path) -> None:
+    src = tmp_path / "main.cpp"
+    src.write_text(
+        "#include <iostream>\n"
+        "int main(){int a,b; if(!(std::cin>>a>>b)) return 0; std::cout<<a+b;}"
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("2 5\n")
+    (tests_dir / "a.out").write_text("7\n")
+
+    result = compile_and_run_io_tests([src], tests_dir)
+    assert result["results"][0]["passed"]
+
+
+def test_compile_and_run_io_tests_cache(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    src = tmp_path / "main.cpp"
+    src.write_text(
+        "#include <iostream>\n"
+        "int main(){int a,b; if(!(std::cin>>a>>b)) return 0; std::cout<<a+b;}"
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "a.in").write_text("1 1\n")
+    (tests_dir / "a.out").write_text("2\n")
+
+    cache = SandboxCache(tmp_path / "cache")
+
+    calls = {"compile": 0, "run": 0}
+    original_compile = cpp_runner.compile_cpp_sources
+    original_run = io_judge.run_io_tests
+
+    def wrapped_compile(*args, **kwargs):
+        calls["compile"] += 1
+        return original_compile(*args, **kwargs)
+
+    def wrapped_run(*args, **kwargs):
+        calls["run"] += 1
+        return original_run(*args, **kwargs)
+
+    monkeypatch.setattr(cpp_runner, "compile_cpp_sources", wrapped_compile)
+    monkeypatch.setattr(io_judge, "run_io_tests", wrapped_run)
+
+    first = compile_and_run_io_tests([src], tests_dir, cache=cache)
+    second = compile_and_run_io_tests([src], tests_dir, cache=cache)
+
+    assert first == second
+    assert calls["compile"] == 1
+    assert calls["run"] == 1

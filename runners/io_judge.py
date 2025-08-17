@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, List, Mapping, Optional, Sequence
 
-from .error_taxonomy import classify_runtime
+from .error_taxonomy import classify_compile, classify_runtime
 from .isolate import IsolateRunner
 from .sandbox_cache import SandboxCache
 
@@ -116,3 +116,93 @@ def run_io_tests(
     if cache is not None and key is not None:
         cache.store(key, data)
     return data
+
+
+def compile_and_run_io_tests(
+    sources: Sequence[Path],
+    tests_dir: Path,
+    *,
+    compiler: str = "g++",
+    flags: Optional[Sequence[str]] = None,
+    sanitize: bool = True,
+    sandbox: Optional[IsolateRunner] = None,
+    cache: Optional[SandboxCache] = None,
+    timeout: float = 2.0,
+    memory_limit: Optional[int] = None,
+    env: Optional[Mapping[str, str]] = None,
+    stdout_limit: Optional[int] = None,
+    stderr_limit: Optional[int] = None,
+) -> Dict[str, object]:
+    """Compile ``sources`` and run resulting binary against I/O tests.
+
+    This helper advances Phase 4 by wiring the C++ build step to the
+    :func:`run_io_tests` execution harness. Compilation diagnostics and the
+    parsed I/O test results are returned in a single dictionary. Results can be
+    memoized via :class:`SandboxCache` keyed by the source files, tests, and
+    resource limits.
+    """
+    from .cpp_runner import compile_cpp_sources, DEFAULT_FLAGS
+
+    compile_flags = list(flags) if flags is not None else list(DEFAULT_FLAGS)
+
+    key: Optional[str] = None
+    if cache is not None:
+        parts = [Path(s).read_bytes() for s in sources]
+        for f in sorted(compile_flags):
+            parts.append(f.encode())
+        parts.append(compiler.encode())
+        parts.append(b"sanitize" if sanitize else b"no_sanitize")
+        parts.append(str(timeout).encode())
+        if memory_limit is not None:
+            parts.append(str(memory_limit).encode())
+        if stdout_limit is not None:
+            parts.append(f"out{stdout_limit}".encode())
+        if stderr_limit is not None:
+            parts.append(f"err{stderr_limit}".encode())
+        for f in sorted(Path(tests_dir).glob("*")):
+            if f.is_file():
+                parts.append(f.read_bytes())
+        key = cache.hash_parts(parts)
+        cached = cache.load(key)
+        if cached is not None:
+            return cached
+
+    compile_res = compile_cpp_sources(
+        sources,
+        compiler=compiler,
+        flags=compile_flags,
+        sanitize=sanitize,
+    )
+    compile_status = classify_compile(compile_res.success, compile_res.stderr)
+    data: Dict[str, object] = {
+        "compile_stdout": compile_res.stdout,
+        "compile_stderr": compile_res.stderr,
+        "compile_warnings": compile_res.warnings,
+        "compile_errors": compile_res.errors,
+        "compile_status": compile_status,
+    }
+
+    if not compile_res.success or compile_res.binary is None:
+        data["results"] = []
+        if cache is not None and key is not None:
+            cache.store(key, data)
+        return data
+
+    run_res = run_io_tests(
+        compile_res.binary,
+        tests_dir,
+        timeout=timeout,
+        memory_limit=memory_limit,
+        env=env,
+        sandbox=sandbox,
+        cache=None,
+        stdout_limit=stdout_limit,
+        stderr_limit=stderr_limit,
+    )
+    data.update(run_res)
+    if cache is not None and key is not None:
+        cache.store(key, data)
+    return data
+
+
+__all__ = ["run_io_tests", "compile_and_run_io_tests"]
