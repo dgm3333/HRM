@@ -36,8 +36,8 @@ Save new code files in: C:\repos\hrm-coder
         - Added ADR 0001 detailing isolate as default sandbox with nsjail/runsc fallbacks
         - Added ADR 0002 selecting MLflow for experiment tracking
         - Added ADR 0003 choosing FastAPI with htmx/Tailwind for the GUI stack
-    [?] Create initial risk register and mitigation plan
-        - Added initial risk register and mitigation plan docs
+    [X] Create initial risk register and mitigation plan
+        - Added and reviewed initial risk register and mitigation plan docs
 
 ** [ ] Phase 1: Repo Scaffold & Deterministic Environment
     [X] Generate project layout scaffold script for hrm-coder directory tree

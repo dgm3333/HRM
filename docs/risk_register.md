@@ -13,15 +13,6 @@ This register tracks early risks for Phase 0 of HRM Coder and proposed mitigatio
 | R7 | Dataset contamination or sensitive data leakage | High | Low | Scan sources, track provenance, and perform manual reviews |
 | R8 | Logs or artifacts leaking credentials or PII | Medium | Low | Scrub logs and restrict artifact retention |
 
-## Mitigation Plan
-
-- **R1:** Harden sandbox profiles, apply strict seccomp, and run malicious sample tests in CI.
-- **R2:** Distribute `env_probe.py` and document required packages in README; fail fast when tools are missing.
-- **R3:** Keep dataset catalog with licenses and URLs; require contributors to record provenance.
-- **R4:** Pin toolchain versions, seeds, locale, and time zone; add deterministic build checks.
-- **R5:** Add stress tests for CPU and memory limits; monitor resource usage within sandbox.
-- **R6:** Pin dependency versions, verify checksums, and maintain a software bill of materials.
-- **R7:** Scan datasets for PII or license conflicts and review sources before inclusion.
-- **R8:** Scrub secrets from logs and limit access to artifacts containing runtime output.
+See [mitigation_plan.md](mitigation_plan.md) for detailed mitigation actions for each risk.
 
 This document will be updated as new risks are identified.

@@ -4,6 +4,8 @@
 
 **Vision:** Build a reliable, reproducible **C++** HRM-powered coder that synthesizes and repairs programs on deterministic, judge-style benchmarks with **safe native execution**, **stable multi-signal rewards**, and **one-command automation** (data → train → eval).
 
+For the current risk register and mitigation strategies, see [risk_register.md](risk_register.md) and [mitigation_plan.md](mitigation_plan.md).
+
 **In-scope (v1):**
 
 1. Token-level C++ code generation on deterministic **intro competitive-programming** tasks (Codeforces-Intro, AtCoder-ABC subset) and a **HumanEval-CPP** port.

@@ -3,6 +3,8 @@
 
 * Public HRM work (paper + repo) shows Sudoku, mazes, and ARC; no code benchmarks or encoders yet. ([arXiv][1], [GitHub][2])
 
+For risk tracking and mitigation strategies, see [risk_register.md](risk_register.md) and [mitigation_plan.md](mitigation_plan.md).
+
 # 1) Objectives
 
 * **Robustness:** no flakiness; identical results on re-runs.
