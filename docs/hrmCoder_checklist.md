@@ -127,5 +127,6 @@ Save new code files in: C:\repos\hrm-coder
     [~] Configure static versus dynamic linking inside jail with rpath handling and ccache
         - Added compile wrapper support for include paths, library directories, rpath, optional static builds, and ccache
         - Added helpers for building shared and static libraries to support library stubs in multi-file projects
+        - Extended shared library builder with include, library, and rpath options for linking against dependent libraries
     [ ] Create C++ security test suite for resource abuse and restricted syscalls
     [ ] Integrate C++ metrics and outcomes into common evaluator and reports
