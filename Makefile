@@ -1,4 +1,4 @@
-.PHONY: data build_runner build_trainer train eval report lint smoke cpp-build cpp-test test tooling
+.PHONY: data build_runner build_trainer train eval report lint smoke cpp-build cpp-test test tooling coverage
 
 # Phase 1 scaffold targets
 # Pass extra command line arguments to individual targets via the ARGS
@@ -41,6 +41,7 @@ tooling: lint test
 
 # Basic C++ build and test targets for Phase 1 scaffolding
 CPP_PRESET ?= sanitized
+CPP_COVERAGE_PRESET ?= coverage
 
 cpp-build:
 	cmake --preset $(CPP_PRESET)
@@ -48,3 +49,12 @@ cpp-build:
 
 cpp-test: cpp-build
 	ctest --test-dir build/$(CPP_PRESET) --output-on-failure
+
+# Generate coverage reports for C++ and Python tests
+coverage:
+	cmake --preset $(CPP_COVERAGE_PRESET)
+	cmake --build build/$(CPP_COVERAGE_PRESET)
+	ctest --test-dir build/$(CPP_COVERAGE_PRESET) --output-on-failure
+	gcovr -r . build/$(CPP_COVERAGE_PRESET) --xml -o build/$(CPP_COVERAGE_PRESET)/coverage.xml --print-summary
+	coverage run -m pytest $(ARGS)
+	coverage xml -o build/python-coverage.xml
