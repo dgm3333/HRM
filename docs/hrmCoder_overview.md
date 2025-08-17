@@ -48,6 +48,7 @@ Augmentation (to reach \~1k samples without contamination):
 # 5) Secure, deterministic execution
 
 * **Sandbox:** choose **nsjail** or **isolate** (used in IOI/CMS) for per-run limits; alternative: Docker with `--runtime=runsc` (gVisor). Disable network; tmpfs; CPU quota; memory+pid limits; seccomp/caps. ([GitHub][8], [cms.readthedocs.io][14], [gvisor.dev][15])
+* **Runner helper:** `hrm_coder.runner.run_in_sandbox` auto-selects the first available backend (`isolate`, `nsjail`, or Docker+`runsc`) so commands run identically inside the `runner` image or on bare metal. Use `scripts/sandbox_smoke.py` to verify sandbox availability.
 * **Runners:** language-specific:
 
   * Python: `pytest -q` inside sandbox; `pytest-timeout` plugin; cap stdout/stderr. ([Pytest Documentation][16], [LambdaTest][17])
