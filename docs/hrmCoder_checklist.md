@@ -48,6 +48,10 @@ Save new code files in: C:\repos\hrm-coder
         - Added lint target invoking pre-commit hooks
         - Wired data target to dataset.build_from_catalog for deterministic builds
         - Added report target generating Markdown/HTML summaries from evaluation results
+        - Added test target running pytest and ctest suites
+        - Added tooling target combining lint and test
+        ~ Document train and eval target usage examples
+        ~ Add coverage target aggregating ctest and pytest results
     [~] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
         - Added helper to instantiate sandbox runners from configuration
