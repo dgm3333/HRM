@@ -126,6 +126,9 @@ Save new code files in: C:\repos\hrm-coder
     [~] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
     [~] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
         - Injected default ASAN_OPTIONS and UBSAN_OPTIONS in run_binary for deterministic sanitized runs
+        - Added BinarySandboxAdapter to route compiled binaries through sandbox with sanitizer environment
+        ~ Add integration tests exercising BinarySandboxAdapter with nsjail and gVisor backends
+        ~ Document adapter usage and sanitizer configuration in developer docs
     [?] Implement Codeforces I/O harness builder and result comparator (multiple test files, TL/ML handling)
     [~] Configure static versus dynamic linking inside jail with rpath handling and ccache
         - Added compile wrapper support for include paths, library directories, rpath, optional static builds, and ccache
