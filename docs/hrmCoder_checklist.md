@@ -44,10 +44,9 @@ Save new code files in: C:\repos\hrm-coder
     [X] Generate project layout scaffold script for hrm-coder directory tree
     [X] Author runner.Dockerfile with g++, CMake, GoogleTest, isolate/nsjail, and sanitizer toolchain
         - Installed coverage utilities and compiled gtest; locale/timezone pinned for determinism
-    [X] Author trainer.Dockerfile with CUDA, PyTorch, and deterministic flags
         - Pinned PyTorch CUDA 12.1 image with cuDNN and set deterministic environment variables
         - Pinned PyTorch 2.2.0 with CUDA 12.1 runtime and enforced reproducibility flags
-    [~] Create Makefile targets for data, train, eval, report, and tooling (CMake + ctest integration)
+    [X] Create Makefile targets for data, train, eval, report, and tooling (CMake + ctest integration)
         - Added build_trainer target for trainer Docker image
         - Added lint target invoking pre-commit hooks
         - Wired data target to dataset.build_from_catalog for deterministic builds
@@ -55,7 +54,7 @@ Save new code files in: C:\repos\hrm-coder
         - Added test target running pytest and ctest suites
         - Added tooling target combining lint and test
         - Document train and eval target usage examples
-        ~ Add coverage target aggregating ctest and pytest results
+        [X] Add coverage target aggregating ctest and pytest results
     [X] Define Hydra config schema and default configs under conf/
         - Added CPU and memory limit options to runner config defaults
         - Added helper to instantiate sandbox runners from configuration
