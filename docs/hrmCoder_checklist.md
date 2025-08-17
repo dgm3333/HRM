@@ -156,5 +156,5 @@ Save new code files in: C:\repos\hrm-coder
         - Extended shared library builder with include, library, and rpath options for linking against dependent libraries
         - Implement automatic $ORIGIN-based rpath injection for bundled libraries
         - Add sandboxed integration tests for dynamic and static linking paths
-    [ ] Create C++ security test suite for resource abuse and restricted syscalls
+    [X] Create C++ security test suite for resource abuse and restricted syscalls
     [X] Integrate C++ metrics and outcomes into common evaluator and reports
