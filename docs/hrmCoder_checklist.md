@@ -146,7 +146,7 @@ Save new code files in: C:\repos\hrm-coder
     [X] Implement g++/clang++ compile wrapper with optimized flags and diagnostics parsing
         - Default flags: `-std=c++17 -O2 -pipe -Wall -Wextra -fdiagnostics-color=never`
         - Structured parsing of compiler warnings and errors
-    [?] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
+     [X] Implement sandbox execution adapter for compiled binaries with sanitizer support (ASan/UBSan)
         - Injected default ASAN_OPTIONS and UBSAN_OPTIONS in run_binary for deterministic sanitized runs
         - Added BinarySandboxAdapter to route compiled binaries through sandbox with sanitizer environment
         - Added integration tests exercising BinarySandboxAdapter with nsjail and gVisor backends
